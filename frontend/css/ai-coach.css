@@ -1,0 +1,223 @@
+/* === AI Coach Chat Page === */
+.ai-coach-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    min-height: calc(100dvh - var(--top-nav-height) - 48px);
+}
+
+.ai-coach-identities,
+.ai-coach-chat-panel {
+    border: 1px solid rgba(226, 229, 237, 0.88);
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: var(--shadow-soft);
+}
+
+.ai-coach-identities {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ai-coach-identities-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ai-coach-identities-head h2 {
+    font-size: 20px;
+    line-height: 1.2;
+    font-weight: 800;
+}
+
+.ai-coach-identity-list {
+    display: grid;
+    gap: 10px;
+    max-height: 62dvh;
+    overflow-y: auto;
+}
+
+.ai-coach-identity-btn {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    transition: var(--transition);
+}
+
+.ai-coach-identity-btn:hover,
+.ai-coach-identity-btn:focus-visible {
+    outline: none;
+    transform: translateY(-1px);
+    border-color: rgba(255, 122, 61, 0.34);
+}
+
+.ai-coach-identity-btn.selected {
+    border-color: rgba(255, 122, 61, 0.42);
+    background: var(--color-primary-soft);
+}
+
+.identity-icon {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.85);
+}
+
+.identity-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.identity-copy strong {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.identity-copy small {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-coach-chat-panel {
+    min-height: min(74dvh, 760px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ai-coach-chat-head {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border);
+    background: #fff;
+}
+
+.ai-coach-chat-head h3 {
+    font-size: 20px;
+    line-height: 1.2;
+    font-weight: 800;
+}
+
+.ai-coach-chat-head p {
+    margin-top: 5px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+}
+
+.ai-coach-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+}
+
+.ai-coach-message {
+    max-width: min(82%, 760px);
+    padding: 12px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+
+.ai-coach-message.ai {
+    align-self: flex-start;
+    background: var(--color-surface);
+    border-bottom-left-radius: 6px;
+}
+
+.ai-coach-message.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-quit));
+    color: #fff;
+    border-bottom-right-radius: 6px;
+}
+
+.ai-coach-message.loading {
+    align-self: flex-start;
+    color: var(--color-text-secondary);
+    background: #fff;
+    border: 1px dashed var(--color-border);
+}
+
+.ai-coach-message.system {
+    align-self: center;
+    max-width: 92%;
+    color: #b42318;
+    background: #ffe6e3;
+    font-size: 12px;
+}
+
+.ai-coach-suggestions {
+    padding: 0 20px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ai-coach-suggestion-btn {
+    padding: 7px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #fff;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.ai-coach-input-row {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--color-border);
+    background: #fff;
+}
+
+.ai-coach-input-row input {
+    flex: 1;
+    min-width: 0;
+    min-height: 46px;
+    padding: 11px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    outline: none;
+}
+
+.ai-coach-input-row button {
+    min-height: 46px;
+    padding: 0 18px;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+@media (min-width: 1060px) {
+    .ai-coach-shell {
+        grid-template-columns: minmax(270px, 320px) minmax(0, 1fr);
+    }
+}

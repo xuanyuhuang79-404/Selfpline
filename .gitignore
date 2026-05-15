@@ -1,0 +1,10 @@
+.env
+target/
+*.class
+.idea/
+.vscode/
+*.iml
+bin/
+/frontend/node_modules/
+backup/
+*.sql
