@@ -196,7 +196,7 @@ const AiCoachPage = {
             const result = await apiClient.post('/ai/coach-chat', {
                 sceneKey: this.selectedSceneKey,
                 message
-            });
+            }, 90000);
             this.hideTyping();
             const aiMessage = result?.data;
             if (!aiMessage || typeof aiMessage !== 'string' || !aiMessage.trim()) {

@@ -233,7 +233,7 @@ const PlanDetailPage = {
                 planId: this.planId,
                 message: message,
                 sceneKey: this.assistSceneKey
-            });
+            }, 90000);
             const loading = document.getElementById(loadingId);
             if (loading) loading.remove();
             if (!reply.data) {

@@ -15,7 +15,7 @@ public class DeepSeekChatRequest {
     private Double temperature = 0.7;
     @JsonProperty("max_tokens")
     @Builder.Default
-    private Integer maxTokens = 2000;
+    private Integer maxTokens = 8000;
     @Builder.Default
     private Boolean stream = false;
 }

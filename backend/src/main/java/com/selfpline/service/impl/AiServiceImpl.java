@@ -34,11 +34,11 @@ import com.selfpline.service.PlanSessionManager.PlanSessionData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.ResourceAccessException;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -78,7 +78,7 @@ public class AiServiceImpl implements AiService {
     private static final String DEFAULT_QUIT_SCENE = "quit_stay_up_late";
     private static final String DEFAULT_ASSIST_SCENE = "daily_checkin";
     private static final String DEFAULT_COACH_CHAT_SCENE = "coach_gentle_companion";
-    private static final String REQUIRED_DEEPSEEK_MODEL = "deepseekv4-flash";
+    private static final String DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
 
     private static final Map<String, String> SCENE_COACH_TYPE_MAP = Map.ofEntries(
             Map.entry("fat_loss_shaping", "FAT_LOSS_COACH"),
@@ -674,25 +674,54 @@ public class AiServiceImpl implements AiService {
         if (apiKey == null || apiKey.isBlank() || "your-api-key".equalsIgnoreCase(apiKey.trim())) {
             throw new AiServiceException("DeepSeek API Key 未配置，请检查 DEEPSEEK_API_KEY 或 application.yml");
         }
+        if (apiKey.trim().length() < 10) {
+            throw new AiServiceException("DeepSeek API Key 太短，可能无效");
+        }
         if (deepSeekConfig.getBaseUrl() == null || deepSeekConfig.getBaseUrl().isBlank()) {
             throw new AiServiceException("DeepSeek baseUrl 未配置");
+        }
+        String baseUrl = deepSeekConfig.getBaseUrl().trim();
+        if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
+            throw new AiServiceException("DeepSeek baseUrl 必须以 http:// 或 https:// 开头");
+        }
+        String model = resolveDeepSeekModel();
+        if (model == null || model.isBlank()) {
+            throw new AiServiceException("DeepSeek model 未配置");
         }
         try {
             DeepSeekChatRequest request = DeepSeekChatRequest.builder()
                     .model(resolveDeepSeekModel())
                     .messages(messages)
                     .build();
-            DeepSeekChatResponse response = deepSeekRestClient.post()
+            ResponseEntity<String> responseEntity = deepSeekRestClient.post()
                     .uri("/chat/completions")
                     .body(request)
-                    .retrieve()
-                    .onStatus(status -> status.value() >= 400, (req, res) -> {
-                        byte[] body = res.getBody().readAllBytes();
-                        String error = new String(body, StandardCharsets.UTF_8);
-                        throw new AiServiceException(
-                                 "DeepSeek API调用失败: HTTP " + res.getStatusCode() + " - " + error);
-                     })
-                     .body(DeepSeekChatResponse.class);
+                    .exchange((clientReq, clientRes) -> {
+                        byte[] bodyBytes = clientRes.getBody().readAllBytes();
+                        String body = new String(bodyBytes, java.nio.charset.StandardCharsets.UTF_8);
+                        return ResponseEntity.status(clientRes.getStatusCode())
+                                .headers(clientRes.getHeaders())
+                                .body(body);
+                    });
+            if (!responseEntity.getStatusCode().is2xxSuccessful()) {
+                String errorBody = responseEntity.getBody() != null ? responseEntity.getBody() : "";
+                log.error("DeepSeek API error response ({}): {}", responseEntity.getStatusCode(), errorBody);
+                throw new AiServiceException(
+                        "DeepSeek API调用失败: HTTP " + responseEntity.getStatusCode().value() + " - " + errorBody);
+            }
+            String responseBody = responseEntity.getBody();
+            if (responseBody == null || responseBody.isBlank()) {
+                throw new AiServiceException("DeepSeek API返回空响应");
+            }
+            DeepSeekChatResponse response;
+            try {
+                response = objectMapper.readValue(responseBody, DeepSeekChatResponse.class);
+            } catch (JsonProcessingException e) {
+                if (responseBody.contains("\"error\"")) {
+                    throw new AiServiceException("DeepSeek API返回错误: " + responseBody);
+                }
+                throw new AiServiceException("DeepSeek API响应解析失败: " + e.getMessage(), e);
+            }
             if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
                 throw new AiServiceException("AI未返回有效响应");
             }
@@ -722,10 +751,16 @@ public class AiServiceImpl implements AiService {
 
     private String resolveDeepSeekModel() {
         String configuredModel = deepSeekConfig.getModel();
-        if (configuredModel != null && !configuredModel.isBlank() && !REQUIRED_DEEPSEEK_MODEL.equals(configuredModel)) {
-            log.info("DeepSeek model configured as {}, enforce {}", configuredModel, REQUIRED_DEEPSEEK_MODEL);
+        if (configuredModel == null || configuredModel.isBlank()) {
+            log.warn("DeepSeek model not configured, using default: {}", DEFAULT_DEEPSEEK_MODEL);
+            return DEFAULT_DEEPSEEK_MODEL;
         }
-        return REQUIRED_DEEPSEEK_MODEL;
+        String trimmed = configuredModel.trim();
+        if (!trimmed.matches("^[a-zA-Z0-9][a-zA-Z0-9._\\-]{0,63}$")) {
+            log.warn("DeepSeek model name looks invalid: '{}', using default: {}", trimmed, DEFAULT_DEEPSEEK_MODEL);
+            return DEFAULT_DEEPSEEK_MODEL;
+        }
+        return trimmed;
     }
 
     private PlanReadyResult extractPlanReadyMarker(String aiResponse) {
@@ -742,7 +777,7 @@ public class AiServiceImpl implements AiService {
                 String cleaned = matcher.replaceFirst("").trim();
                 return new PlanReadyResult(cleaned, Boolean.TRUE.equals(ready), summary);
             } catch (JsonProcessingException e) {
-                // marker parse failure — return response as-is without plan
+                log.warn("PLAN_READY marker parse failed, returning response as-is without plan: {}", e.getMessage());
             }
         }
         return new PlanReadyResult(aiResponse, false, Collections.emptyMap());

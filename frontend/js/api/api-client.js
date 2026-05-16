@@ -69,11 +69,12 @@ const apiClient = {
             }
 
             if (res.status >= 500) {
-                throw new Error('后端服务异常，请查看后端日志');
+                const serverMsg = json?.msg || json?.message;
+                throw new Error(serverMsg || '后端服务异常，请查看后端日志');
             }
 
             if (!res.ok) {
-                throw new Error(json?.msg || `请求失败(${res.status})`);
+                throw new Error(json?.msg || json?.message || `请求失败(${res.status})`);
             }
 
             if (!json) {
@@ -81,7 +82,7 @@ const apiClient = {
             }
 
             if (json.code !== 200) {
-                throw new Error(json.msg || '请求失败');
+                throw new Error(json.msg || json.message || '请求失败');
             }
 
             return json;
@@ -126,7 +127,7 @@ const apiClient = {
     },
 
     get(path) { return this.request('GET', path); },
-    post(path, body) { return this.request('POST', path, body); },
+    post(path, body, timeoutMs) { return this.request('POST', path, body, timeoutMs); },
     put(path, body) { return this.request('PUT', path, body); },
     delete(path) { return this.request('DELETE', path); }
 };

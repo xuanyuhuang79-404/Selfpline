@@ -8,3 +8,4 @@ bin/
 /frontend/node_modules/
 backup/
 *.sql
+!mysql/init/*.sql

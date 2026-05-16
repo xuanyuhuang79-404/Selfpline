@@ -6,6 +6,7 @@ import com.selfpline.model.dto.deepseek.ChatMessage;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.List;
 
 @Component
 @ConditionalOnBean(StringRedisTemplate.class)
+@ConditionalOnProperty(name = "selfpline.redis-session-enabled", havingValue = "true", matchIfMissing = false)
 @RequiredArgsConstructor
 public class PlanSessionManager {
 

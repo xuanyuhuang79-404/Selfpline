@@ -217,7 +217,7 @@ const AiClassroom = {
             direction: this.direction,
             topic,
             sceneKey: this.selectedSceneKey
-        });
+        }, 90000);
         this.hideTyping();
         const data = res?.data || {};
         if (!data.sessionId) {
@@ -236,7 +236,7 @@ const AiClassroom = {
             sessionId: this.sessionId,
             message,
             sceneKey: this.selectedSceneKey
-        });
+        }, 90000);
         this.hideTyping();
 
         const data = res?.data || {};
