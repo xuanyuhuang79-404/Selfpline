@@ -73,10 +73,10 @@ const AiClassroom = {
     async loadScenarios() {
         this.renderScenarioLoading();
         try {
-            const result = await apiClient.get('/ai/scenarios');
+            const result = await apiClient.get('/ai/scenarios?category=plan_creation');
             const scenes = Array.isArray(result.data) ? result.data : [];
             const planScenes = scenes.filter(scene =>
-                (scene.category === 'plan_creation' || scene.planCreationSupported === true)
+                scene.category === 'plan_creation'
                 && scene.planCreationSupported !== false
             );
             this.scenarios = planScenes.length ? planScenes : this.getFallbackScenarios();

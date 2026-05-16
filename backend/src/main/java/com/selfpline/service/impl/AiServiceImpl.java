@@ -21,6 +21,7 @@ import com.selfpline.model.dto.response.CoachResponse;
 import com.selfpline.model.dto.response.PlanChatResponse;
 import com.selfpline.model.dto.response.PlanInitResponse;
 import com.selfpline.model.entity.AiChatLog;
+import com.selfpline.model.entity.AiCoachConfig;
 import com.selfpline.model.entity.AiCustomPlan;
 import com.selfpline.model.entity.PlanDailyLog;
 import com.selfpline.model.entity.SysUser;
@@ -606,7 +607,11 @@ public class AiServiceImpl implements AiService {
         SysUser user = userMapper.selectById(userId);
         String userContext = buildUserContext(user);
         String coachRole = buildCoachRole("COACH_CHAT", sceneKey);
-        String systemPrompt = scene.systemPrompt()
+        AiCoachConfig config = coachConfigMapper.findByCoachKey(sceneKey);
+        String basePrompt = config != null && config.getSystemPrompt() != null && !config.getSystemPrompt().isBlank()
+                ? config.getSystemPrompt()
+                : scene.systemPrompt();
+        String systemPrompt = basePrompt
                 + "\n\n---\n当前身份:\n" + scene.sceneName()
                 + "\n场景类别: coach_chat"
                 + "\n用户画像:\n" + userContext
@@ -847,11 +852,16 @@ public class AiServiceImpl implements AiService {
     }
 
     private boolean isCoachChatScene(String sceneKey) {
-        AiScenarioDefinition scene = AI_SCENARIO_MAP.get(normalizeSceneKey(sceneKey));
-        return scene != null && !scene.planCreationSupported();
+        String normalizedSceneKey = normalizeSceneKey(sceneKey);
+        return normalizedSceneKey != null
+                && normalizedSceneKey.startsWith("coach_")
+                && AI_SCENARIO_MAP.containsKey(normalizedSceneKey);
     }
 
     private String resolveSceneCategory(AiScenarioDefinition scene) {
+        if (isCoachChatScene(scene.sceneKey())) {
+            return "coach_chat";
+        }
         return scene.planCreationSupported() ? "plan_creation" : "coach_chat";
     }
 

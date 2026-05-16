@@ -29,7 +29,7 @@ mybatis-plus:
 deepseek:
   api-key: ${DEEPSEEK_API_KEY:your-api-key}
   base-url: https://api.deepseek.com/v1
-  model: deepseek-chat
+  model: deepseekv4-flash
 
 # JWT
 jwt:

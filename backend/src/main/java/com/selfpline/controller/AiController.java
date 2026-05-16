@@ -31,8 +31,19 @@ public class AiController {
     }
 
     @GetMapping("/scenarios")
-    public Result<?> getScenarios() {
-        return Result.success(aiService.getAiScenarios());
+    public Result<?> getScenarios(@RequestParam(required = false) String category) {
+        var scenarios = aiService.getAiScenarios();
+        if (category != null && !category.isBlank()) {
+            String normalizedCategory = category.trim().toLowerCase();
+            scenarios = scenarios.stream()
+                    .filter(scene -> normalizedCategory.equalsIgnoreCase(scene.getCategory()))
+                    .filter(scene -> !"coach_chat".equals(normalizedCategory)
+                            || Boolean.TRUE.equals(scene.getCoachChatSupported()))
+                    .filter(scene -> !"plan_creation".equals(normalizedCategory)
+                            || Boolean.TRUE.equals(scene.getPlanCreationSupported()))
+                    .toList();
+        }
+        return Result.success(scenarios);
     }
 
     @PostMapping("/plan-init")

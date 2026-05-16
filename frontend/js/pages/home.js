@@ -136,7 +136,7 @@ const HomePage = {
 
     openAiCoach(sceneKey = '') {
         const params = sceneKey ? { sceneKey } : {};
-        PageRouter.navigate('ai-coach', params);
+        PageRouter.navigate('ai-coach-chat', params);
     },
 
     formatTime(updatedAt) {

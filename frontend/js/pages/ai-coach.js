@@ -53,10 +53,10 @@ const AiCoachPage = {
 
     async loadScenes() {
         try {
-            const result = await apiClient.get('/ai/scenarios');
+            const result = await apiClient.get('/ai/scenarios?category=coach_chat');
             const scenes = Array.isArray(result.data) ? result.data : [];
             this.scenes = scenes.filter(scene =>
-                (scene.category === 'coach_chat' || scene.planCreationSupported === false)
+                scene.category === 'coach_chat'
                 && scene.coachChatSupported !== false
             );
         } catch (e) {

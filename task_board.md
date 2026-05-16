@@ -227,3 +227,4 @@
 | 15.6 | Prompt 分类与场景扩展 | ✅ | 后端场景新增 coach_chat / plan_creation 分类与多场景 prompt |
 | 15.7 | DeepSeek v4-flash 强制模型 | ✅ | 所有 AI 调用统一走后端并强制使用 deepseekv4-flash |
 | 15.8 | AI 指导师后端真实接口 | ✅ | 新增 /api/ai/coach-chat，复用 ai_chat_log 记录独立聊天 |
+| 15.9 | 收口检查与提交准备 | ✅ | Java 17 Maven compile/test 通过；DeepSeek 旧模型残留检查通过；本机缺少 node，前端 node --check 未执行 |

@@ -23,7 +23,10 @@ const PageRouter = {
         switch (pageName) {
             case 'auth': renderTask = AuthPage.render(); break;
             case 'home': renderTask = HomePage.render(); break;
-            case 'ai-coach': renderTask = AiCoachPage.render(this.getParams()); break;
+            case 'ai-coach':
+            case 'ai-coach-chat':
+                renderTask = AiCoachPage.render(this.getParams());
+                break;
             case 'ai-classroom': renderTask = AiClassroom.render(this.getParams()); break;
             case 'plan-detail': renderTask = PlanDetailPage.render(this.getParams()); break;
             case 'health': renderTask = HealthCheckinPage.render(); break;
@@ -45,7 +48,7 @@ const PageRouter = {
     },
 
     updateNavState(pageName) {
-        const activePage = (pageName === 'plan-detail' || pageName === 'ai-classroom' || pageName === 'ai-coach')
+        const activePage = (pageName === 'plan-detail' || pageName === 'ai-classroom' || pageName === 'ai-coach' || pageName === 'ai-coach-chat')
             ? 'home'
             : pageName;
         document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -58,6 +61,7 @@ const PageRouter = {
             auth: ['Selfpline', '习惯管理 / AI 指导师'],
             home: ['今日工作台', '计划、周历与 AI 建议'],
             'ai-coach': ['AI 指导师', '选择身份风格并开始对话'],
+            'ai-coach-chat': ['AI 指导师', '选择身份风格并开始对话'],
             'ai-classroom': ['创建计划', 'Build / Quit 下细化你的执行方案'],
             'plan-detail': ['计划详情', '记录、复盘与调整'],
             health: ['健康打卡', '同步身体状态与执行情况'],
