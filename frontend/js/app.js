@@ -38,7 +38,7 @@ const PageRouter = {
         if (renderTask && typeof renderTask.catch === 'function') {
             renderTask.catch(error => {
                 console.error('Page render failed:', error);
-                Toast.show('页面加载失败，请重试');
+                Toast.show(error?.message || '页面加载失败，请重试');
             });
         }
     },
@@ -132,5 +132,6 @@ window.addEventListener('error', function(e) {
 
 window.addEventListener('unhandledrejection', function(e) {
     console.error('Unhandled rejection:', e.reason);
-    Toast.show('操作失败，请重试');
+    Toast.show(e.reason?.message || '操作失败，请重试');
+    e.preventDefault();
 });

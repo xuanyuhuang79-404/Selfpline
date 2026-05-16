@@ -134,7 +134,7 @@ const CommunityPage = {
             document.getElementById('loadMoreContainer').classList.toggle('hidden', !this.hasMore);
         } catch (e) {
             if (this.currentPage === 1) {
-                document.getElementById('postFeed').innerHTML = '<div class="empty-state"><div class="empty-icon">\u{1F635}</div><div class="empty-title">加载失败</div><div class="empty-desc">请检查网络后重试</div></div>';
+                document.getElementById('postFeed').innerHTML = `<div class="empty-state"><div class="empty-icon">\u{1F635}</div><div class="empty-title">加载失败</div><div class="empty-desc">${this.escapeHtml(e.message || '请稍后重试')}</div></div>`;
             }
         } finally {
             this.loading = false;
@@ -191,7 +191,7 @@ const CommunityPage = {
             } else {
                 this.likedPosts.delete(postId);
             }
-            Toast.show('操作失败');
+            Toast.show('操作失败: ' + e.message);
         }
     },
 

@@ -1,5 +1,6 @@
 // API 基础请求封装
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE_URL = 'http://localhost:8080/api';
+const API_HEALTH_URL = `${API_BASE_URL}/health`;
 
 const apiClient = {
     token: null,
@@ -34,11 +35,11 @@ const apiClient = {
                 headers,
                 signal: controller.signal,
             };
-            if (body) {
+            if (body !== null && body !== undefined) {
                 config.body = JSON.stringify(body);
             }
 
-            const res = await fetch(`${API_BASE}${path}`, config);
+            const res = await fetch(`${API_BASE_URL}${path}`, config);
             clearTimeout(timeoutId);
 
             const text = await res.text();
@@ -46,15 +47,29 @@ const apiClient = {
             try {
                 json = text ? JSON.parse(text) : null;
             } catch (parseError) {
-                throw new Error('服务器返回格式异常');
+                json = null;
             }
 
             if (res.status === 401 || json?.code === 401) {
                 this.setToken(null);
-                if (typeof PageRouter !== 'undefined') {
+                if (path !== '/user/login' && path !== '/user/register' && typeof PageRouter !== 'undefined') {
                     PageRouter.navigate('auth');
                 }
-                throw new Error('登录已过期，请重新登录');
+                throw new Error(path === '/user/login'
+                    ? '账号或密码错误，请重新输入'
+                    : '登录已过期，请重新登录');
+            }
+
+            if (res.status === 403 || json?.code === 403) {
+                throw new Error('没有权限执行该操作，请重新登录后再试');
+            }
+
+            if (res.status === 404) {
+                throw new Error('接口路径不存在，请检查前后端接口路径');
+            }
+
+            if (res.status >= 500) {
+                throw new Error('后端服务异常，请查看后端日志');
             }
 
             if (!res.ok) {
@@ -62,7 +77,7 @@ const apiClient = {
             }
 
             if (!json) {
-                throw new Error('服务器无响应内容');
+                throw new Error('服务器返回格式异常');
             }
 
             if (json.code !== 200) {
@@ -73,12 +88,40 @@ const apiClient = {
         } catch (e) {
             clearTimeout(timeoutId);
             if (e.name === 'AbortError') {
-                throw new Error('请求超时，请检查网络');
+                throw new Error('请求超时，请确认后端服务是否正常运行');
             }
-            if (e.message === 'Failed to fetch') {
-                throw new Error('网络连接失败，请检查网络');
+            if (this.isFetchConnectionError(e)) {
+                throw new Error(await this.detectConnectionErrorMessage());
             }
             throw e;
+        }
+    },
+
+    isFetchConnectionError(error) {
+        const message = String(error?.message || '');
+        return error instanceof TypeError
+            || /Failed to fetch|NetworkError|Load failed/i.test(message);
+    },
+
+    async detectConnectionErrorMessage() {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            return '浏览器当前离线，请检查本机网络连接';
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        try {
+            await fetch(API_HEALTH_URL, {
+                method: 'GET',
+                mode: 'no-cors',
+                cache: 'no-store',
+                signal: controller.signal
+            });
+            return '跨域请求被阻止，请检查后端 CORS 配置和前端端口';
+        } catch (e) {
+            return '后端服务未启动或无法连接，请先运行 mvn -f backend/pom.xml spring-boot:run';
+        } finally {
+            clearTimeout(timeoutId);
         }
     },
 

@@ -133,7 +133,7 @@ const HealthCheckinPage = {
                 </div>
             `).join('');
         } catch (e) {
-            checklistContainer.innerHTML = '<div class="plan-check-placeholder">加载失败</div>';
+            checklistContainer.innerHTML = `<div class="plan-check-placeholder">${this.escapeHtml(e.message || '加载失败')}</div>`;
         }
     },
 
@@ -162,7 +162,7 @@ const HealthCheckinPage = {
             icon.textContent = isChecked ? '☑' : '☐';
             item?.classList.toggle('is-done', isChecked);
             if (status) status.textContent = isChecked ? '已完成' : '未打卡';
-            Toast.show('操作失败');
+            Toast.show('操作失败: ' + e.message);
         }
     },
 

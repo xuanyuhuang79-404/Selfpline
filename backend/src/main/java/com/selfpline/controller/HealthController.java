@@ -9,6 +9,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/health")
@@ -16,6 +17,11 @@ import java.time.LocalDate;
 public class HealthController {
 
     private final HealthService healthService;
+
+    @GetMapping
+    public Result<?> health() {
+        return Result.success(Map.of("status", "ok"));
+    }
 
     @PostMapping("/daily-record")
     public Result<Void> submitDailyRecord(@RequestAttribute("userId") Long userId,

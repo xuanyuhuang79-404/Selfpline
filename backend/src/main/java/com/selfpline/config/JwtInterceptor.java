@@ -6,9 +6,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.util.Set;
+
 @Component
 @RequiredArgsConstructor
 public class JwtInterceptor implements HandlerInterceptor {
+
+    private static final Set<String> PUBLIC_PATHS = Set.of(
+            "/api/user/login",
+            "/api/user/register",
+            "/api/health");
 
     private final JwtUtil jwtUtil;
 
@@ -19,7 +26,7 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         String path = request.getServletPath();
-        if ("/api/user/login".equals(path) || "/api/user/register".equals(path)) {
+        if (PUBLIC_PATHS.contains(path)) {
             return true;
         }
 

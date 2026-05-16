@@ -206,7 +206,7 @@ const HomePage = {
             this.populateWeekDots(cards);
         } catch (e) {
             this.renderSummary([]);
-            container.innerHTML = '<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-title">加载失败</div><div class="empty-desc">请稍后重试或检查后端服务</div></div>';
+            container.innerHTML = `<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-title">加载失败</div><div class="empty-desc">${this.escapeHtml(e.message || '请稍后重试或检查后端服务')}</div></div>`;
         }
     },
 

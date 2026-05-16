@@ -57,7 +57,7 @@ const HabitCard = {
                 HomePage.loadCards();
             }
         } catch (e) {
-            Toast.show('打卡失败');
+            Toast.show('打卡失败: ' + e.message);
         }
     },
 
@@ -83,7 +83,7 @@ const HabitCard = {
                 HomePage.loadCards();
             }
         } catch (e) {
-            Toast.show('操作失败');
+            Toast.show('操作失败: ' + e.message);
         }
     },
 
