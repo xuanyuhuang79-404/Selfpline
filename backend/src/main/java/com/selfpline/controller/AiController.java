@@ -12,7 +12,9 @@ import com.selfpline.service.PlanSessionManager;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -91,5 +93,33 @@ public class AiController {
                                           @RequestParam(defaultValue = "1") int page,
                                           @RequestParam(defaultValue = "20") int size) {
         return Result.success(aiService.getAssistChatHistory(userId, planId, page, size));
+    }
+
+    // ========================================================================
+    // Streaming Endpoints
+    // ========================================================================
+
+    @PostMapping(value = "/plan-init/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter planInitStream(@RequestAttribute("userId") Long userId,
+                                     @Valid @RequestBody PlanInitRequest request) {
+        return aiService.initPlanCreationStream(userId, request);
+    }
+
+    @PostMapping(value = "/plan-chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter planChatStream(@RequestAttribute("userId") Long userId,
+                                     @Valid @RequestBody PlanChatRequest request) {
+        return aiService.continuePlanChatStream(userId, request);
+    }
+
+    @PostMapping(value = "/coach-chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter coachChatStream(@RequestAttribute("userId") Long userId,
+                                      @Valid @RequestBody CoachChatRequest request) {
+        return aiService.coachChatStream(userId, request);
+    }
+
+    @PostMapping(value = "/assist-chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter assistChatStream(@RequestAttribute("userId") Long userId,
+                                       @Valid @RequestBody AssistChatRequest request) {
+        return aiService.assistChatStream(userId, request);
     }
 }

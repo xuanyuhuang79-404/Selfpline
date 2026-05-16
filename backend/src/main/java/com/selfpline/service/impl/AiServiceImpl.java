@@ -29,6 +29,7 @@ import com.selfpline.model.enums.ConversationType;
 import com.selfpline.pattern.factory.AiCoachFactory;
 import com.selfpline.pattern.strategy.AiCoachStrategy;
 import com.selfpline.service.AiService;
+import com.selfpline.service.DeepSeekStreamService;
 import com.selfpline.service.PlanSessionManager;
 import com.selfpline.service.PlanSessionManager.PlanSessionData;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -65,6 +67,7 @@ public class AiServiceImpl implements AiService {
     private final RestClient deepSeekRestClient;
     private final DeepSeekConfig deepSeekConfig;
     private final ObjectMapper objectMapper;
+    private final DeepSeekStreamService deepSeekStreamService;
 
     @Autowired(required = false)
     private PlanSessionManager sessionManager;
@@ -836,7 +839,18 @@ public class AiServiceImpl implements AiService {
                 + "图标请根据主题选择合适的emoji。"
                 + "如信息仍不足请继续提问，planReady设为false。";
 
-        return basePrompt + "\n\n场景指导:\n" + sceneInstruction + "\n\n" + directionInstruction + planReadyInstruction;
+        // Style guide for natural, product-like AI output
+        String styleGuide = "\n\n回复风格要求：\n"
+                + "- 用自然对话的语气，不要输出固定编号清单(1)...2)...3)...4)...)\n"
+                + "- 像一位真实的私人教练或陪伴者那样说话，不要机械地说\"输出结构固定为\"\n"
+                + "- 每条回复可以适当使用1-3个emoji表情符号增强亲和力，不要过量\n"
+                + "- 不要提及\"作为一个AI\"、\"根据系统提示\"、\"PLAN_READY\"等词汇\n"
+                + "- 格式标记[PLAN_READY]和JSON是内部使用，绝对不要向用户提及或展示\n"
+                + "- 前几轮以温和提问和倾听为主，信息足够后再自然引导到计划\n"
+                + "- 生成计划时可以说\"我已经可以帮你整理一个初版计划了\"而不是\"输出\"\n"
+                + "- 保持回复简洁、可执行、有温度";
+
+        return basePrompt + "\n\n场景指导:\n" + sceneInstruction + "\n\n" + directionInstruction + planReadyInstruction + styleGuide;
     }
 
     private String buildDirectionInstruction(String direction, String topic) {
@@ -990,5 +1004,363 @@ public class AiServiceImpl implements AiService {
         log.setUserMessage(userMessage);
         log.setAiResponse(aiResponse);
         chatLogMapper.insert(log);
+    }
+
+    // ========================================================================
+    // Streaming Methods
+    // ========================================================================
+
+    @Override
+    public SseEmitter initPlanCreationStream(Long userId, PlanInitRequest request) {
+        SseEmitter emitter = new SseEmitter(120000L);
+        log.info("stream request start: endpoint=plan-init, userId={}, sceneKey={}",
+                userId, request.getSceneKey());
+        if (request.getDirection() == null ||
+                (!"BUILD".equalsIgnoreCase(request.getDirection()) && !"QUIT".equalsIgnoreCase(request.getDirection()))) {
+            return emitErrorAndComplete(emitter, new IllegalArgumentException("计划方向必须为 BUILD 或 QUIT"));
+        }
+        if (request.getTopic() == null || request.getTopic().isBlank()) {
+            return emitErrorAndComplete(emitter, new IllegalArgumentException("计划主题不能为空"));
+        }
+        String direction = request.getDirection().toUpperCase();
+        String sceneKey = resolvePlanCreationSceneKey(request.getSceneKey(), direction);
+        String coachType = resolveCoachTypeForScene(sceneKey, request.getCoachType());
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            return emitErrorAndComplete(emitter, new IllegalArgumentException("用户不存在"));
+        }
+        try {
+            coachFactory.getStrategy(coachType);
+        } catch (IllegalArgumentException e) {
+            return emitErrorAndComplete(emitter, new AiServiceException(e.getMessage()));
+        }
+
+        String fullSystemPrompt = assembleSystemPrompt(coachType, direction, request.getTopic(), userId, sceneKey);
+        String directionLabel = "BUILD".equals(direction) ? "养成习惯" : "戒除习惯";
+        String firstUserMessage = "我想建立一个新计划：" + request.getTopic()
+                + "。计划方向是" + directionLabel + "。请引导我逐步完成计划创建。";
+        String sessionId = UUID.randomUUID().toString();
+
+        PlanSessionData sessionData = new PlanSessionData();
+        sessionData.setCoachType(coachType);
+        sessionData.setDirection(direction);
+        sessionData.setTopic(request.getTopic());
+        sessionData.setSceneKey(sceneKey);
+        sessionData.setUserId(userId);
+        sessionData.getMessages().add(new ChatMessage("system", fullSystemPrompt));
+        sessionData.getMessages().add(new ChatMessage("user", firstUserMessage));
+        createPlanSession(sessionId, sessionData);
+
+        // Send meta with sessionId immediately
+        sendSseEvent(emitter, "meta", Map.of("sessionId", sessionId));
+
+        callDeepSeekStreamAndRelay(emitter, userId, sessionData.getMessages(),
+                (userId2, fullAiResponse) -> {
+                    PlanReadyResult planResult = extractPlanReadyMarker(fullAiResponse);
+                    log.info("planReady parsed result: endpoint=plan-init, userId={}, planReady={}",
+                            userId2, planResult.planReady());
+                    if (planResult.planReady()) {
+                        sendSseEvent(emitter, "planReady",
+                                Map.of("planReady", true, "planSummary", planResult.planSummary()));
+                    }
+                    saveChatLog(userId2, null, ConversationType.PLAN_CREATION,
+                            buildCoachRole(coachType, sceneKey), firstUserMessage, planResult.cleanedResponse());
+                });
+
+        return emitter;
+    }
+
+    @Override
+    public SseEmitter continuePlanChatStream(Long userId, PlanChatRequest request) {
+        SseEmitter emitter = new SseEmitter(120000L);
+        log.info("stream request start: endpoint=plan-chat, userId={}, sessionId={}, sceneKey={}",
+                userId, request.getSessionId(), request.getSceneKey());
+        PlanSessionData session = getPlanSession(request.getSessionId());
+        if (session == null) {
+            return emitErrorAndComplete(emitter, new IllegalArgumentException("会话已过期，请重新开始"));
+        }
+        if (!userId.equals(session.getUserId())) {
+            return emitErrorAndComplete(emitter, new IllegalArgumentException("会话验证失败"));
+        }
+        addPlanSessionMessage(request.getSessionId(), new ChatMessage("user", request.getMessage()));
+        PlanSessionData updatedSession = getPlanSession(request.getSessionId());
+        List<ChatMessage> messages = updatedSession != null ? updatedSession.getMessages() : session.getMessages();
+
+        String sceneKey = resolvePlanCreationSceneKey(
+                request.getSceneKey() != null ? request.getSceneKey() : session.getSceneKey(),
+                session.getDirection());
+        String coachType = resolveCoachTypeForScene(sceneKey, session.getCoachType());
+
+        callDeepSeekStreamAndRelay(emitter, userId, messages,
+                (uid, fullAiResponse) -> {
+                    PlanReadyResult planResult = extractPlanReadyMarker(fullAiResponse);
+                    log.info("planReady parsed result: endpoint=plan-chat, userId={}, planReady={}",
+                            uid, planResult.planReady());
+                    addPlanSessionMessage(request.getSessionId(), new ChatMessage("assistant", planResult.cleanedResponse()));
+                    if (planResult.planReady()) {
+                        sendSseEvent(emitter, "planReady",
+                                Map.of("planReady", true, "planSummary", planResult.planSummary()));
+                    }
+                    saveChatLog(uid, null, ConversationType.PLAN_CREATION,
+                            buildCoachRole(coachType, sceneKey), request.getMessage(), planResult.cleanedResponse());
+                });
+
+        return emitter;
+    }
+
+    @Override
+    public SseEmitter coachChatStream(Long userId, CoachChatRequest request) {
+        SseEmitter emitter = new SseEmitter(120000L);
+        log.info("stream request start: endpoint=coach-chat, userId={}, sceneKey={}",
+                userId, request.getSceneKey());
+        String sceneKey = resolveCoachChatSceneKey(request.getSceneKey());
+        AiScenarioDefinition scene = AI_SCENARIO_MAP.get(sceneKey);
+        if (scene == null) {
+            return emitErrorAndComplete(emitter, new IllegalArgumentException("无效的 AI 指导师场景"));
+        }
+
+        SysUser user = userMapper.selectById(userId);
+        String userContext = buildUserContext(user);
+        String coachRole = buildCoachRole("COACH_CHAT", sceneKey);
+        AiCoachConfig config = coachConfigMapper.findByCoachKey(sceneKey);
+        String basePrompt = config != null && config.getSystemPrompt() != null && !config.getSystemPrompt().isBlank()
+                ? config.getSystemPrompt()
+                : scene.systemPrompt();
+        String systemPrompt = basePrompt
+                + "\n\n---\n当前身份:\n" + scene.sceneName()
+                + "\n场景类别: coach_chat"
+                + "\n用户画像:\n" + userContext
+                + "\n安全要求:\n" + String.join("；", scene.safetyRules())
+                + "\n建议输入:\n" + String.join("；", scene.suggestedUserInputs());
+
+        List<AiChatLog> recentLogs = chatLogMapper.findRecentIndependentByRole(
+                userId, ConversationType.INDEPENDENT_CONSULT.getCode(), coachRole, 12);
+        if (recentLogs == null) recentLogs = new ArrayList<>();
+        Collections.reverse(recentLogs);
+
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(new ChatMessage("system", systemPrompt));
+        for (AiChatLog log : recentLogs) {
+            if (log.getUserMessage() != null && !log.getUserMessage().isBlank()) {
+                messages.add(new ChatMessage("user", log.getUserMessage()));
+            }
+            if (log.getAiResponse() != null && !log.getAiResponse().isBlank()) {
+                messages.add(new ChatMessage("assistant", log.getAiResponse()));
+            }
+        }
+        messages.add(new ChatMessage("user", request.getMessage()));
+
+        String userMessage = request.getMessage();
+        callDeepSeekStreamAndRelay(emitter, userId, messages,
+                (uid, fullAiResponse) -> saveChatLog(uid, null, ConversationType.INDEPENDENT_CONSULT,
+                        coachRole, userMessage, fullAiResponse));
+
+        return emitter;
+    }
+
+    @Override
+    public SseEmitter assistChatStream(Long userId, AssistChatRequest request) {
+        SseEmitter emitter = new SseEmitter(120000L);
+        log.info("stream request start: endpoint=assist-chat, userId={}, planId={}, sceneKey={}",
+                userId, request.getPlanId(), request.getSceneKey());
+        AiCustomPlan plan = planMapper.selectById(request.getPlanId());
+        if (plan == null || !userId.equals(plan.getUserId())) {
+            return emitErrorAndComplete(emitter, new IllegalArgumentException("计划不存在"));
+        }
+
+        SysUser user = userMapper.selectById(userId);
+        String planDirection = plan.getPlanDirection() != null ? plan.getPlanDirection().name() : "";
+        String sceneKey = resolveSceneKey(request.getSceneKey(), planDirection);
+        String coachType = resolveCoachTypeForScene(sceneKey, plan.getCoachType());
+        AiCoachStrategy strategy = coachFactory.getStrategy(coachType);
+        String userContext = buildUserContext(user);
+        String planContent = plan.getPlanContent() != null ? plan.getPlanContent() : "";
+        String targetName = plan.getTargetName() != null ? plan.getTargetName() : "";
+        String planContext = "计划内容:" + planContent
+                + ", 方向:" + planDirection
+                + ", 目标:" + targetName
+                + ", 近期记录:" + buildRecentLogContext(plan.getId());
+        String systemPrompt = strategy.getSystemPrompt(userContext, planContext)
+                + "\n\n---\n当前指导场景:\n" + resolveScenePrompt(sceneKey);
+
+        List<AiChatLog> recentLogs = chatLogMapper.findRecentByPlanId(
+                plan.getId(), ConversationType.DAILY_ASSIST.getCode(), 15);
+        if (recentLogs == null) recentLogs = new ArrayList<>();
+        Collections.reverse(recentLogs);
+
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(new ChatMessage("system", systemPrompt));
+        for (AiChatLog log : recentLogs) {
+            messages.add(new ChatMessage("user", log.getUserMessage()));
+            messages.add(new ChatMessage("assistant", log.getAiResponse()));
+        }
+        messages.add(new ChatMessage("user", request.getMessage()));
+
+        String userMessage = request.getMessage();
+        callDeepSeekStreamAndRelay(emitter, userId, messages,
+                (uid, fullAiResponse) -> saveChatLog(uid, plan.getId(), ConversationType.DAILY_ASSIST,
+                        buildCoachRole(coachType, sceneKey), userMessage, fullAiResponse));
+
+        return emitter;
+    }
+
+    // ========================================================================
+    // Stream helper: call DeepSeek SSE, filter PLAN_READY, relay tokens
+    // ========================================================================
+
+    @FunctionalInterface
+    private interface StreamCompletionCallback {
+        void onComplete(Long userId, String fullAiResponse);
+    }
+
+    private void callDeepSeekStreamAndRelay(SseEmitter emitter, Long userId,
+                                            List<ChatMessage> messages,
+                                            StreamCompletionCallback onComplete) {
+        StringBuilder fullResponse = new StringBuilder();
+        PlanReadyFilter filter = new PlanReadyFilter(emitter);
+
+        emitter.onCompletion(() -> log.debug("SSE stream completed"));
+        emitter.onTimeout(() -> {
+            log.warn("SSE stream timeout");
+            sendSseEvent(emitter, "error", Map.of("message", "AI 响应超时，请稍后重试"));
+            emitter.complete();
+        });
+        emitter.onError(e -> log.error("SSE stream error: {}", e.getMessage()));
+
+        new Thread(() -> {
+            try {
+                String full = deepSeekStreamService.streamChat(messages, chunk -> {
+                    fullResponse.append(chunk);
+                    filter.feed(chunk);
+                }, errMsg -> log.warn("Stream chunk parse warning: {}", errMsg));
+
+                filter.flush();
+                try {
+                    onComplete.onComplete(userId, full);
+                } catch (Exception e) {
+                    log.error("Stream completion callback failed: {}", e.getMessage());
+                    sendSseEvent(emitter, "error", Map.of("message", "AI 回复保存失败，请稍后刷新确认"));
+                }
+                sendSseEvent(emitter, "done", Map.of("finishReason", "stop"));
+                log.info("stream done: userId={}, chars={}", userId, full.length());
+                emitter.complete();
+            } catch (AiServiceException e) {
+                log.error("DeepSeek stream failed: {}", e.getMessage());
+                sendSseEvent(emitter, "error", Map.of("message", e.getMessage()));
+                emitter.completeWithError(e);
+            } catch (Exception e) {
+                log.error("Stream unexpected error", e);
+                sendSseEvent(emitter, "error", Map.of("message", e.getMessage()));
+                emitter.completeWithError(e);
+            }
+        }, "deepseek-sse-relay").start();
+    }
+
+    private SseEmitter emitErrorAndComplete(SseEmitter emitter, Exception e) {
+        sendSseEvent(emitter, "error", Map.of("message", e.getMessage()));
+        emitter.completeWithError(e);
+        return emitter;
+    }
+
+    private void sendSseEvent(SseEmitter emitter, String eventName, Object data) {
+        try {
+            String json = objectMapper.writeValueAsString(data == null ? Map.of() : data);
+            emitter.send(SseEmitter.event().name(eventName).data(json));
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize SSE event {}: {}", eventName, e.getMessage());
+        } catch (Exception e) {
+            log.debug("Failed to send SSE event {}: {}", eventName, e.getMessage());
+        }
+    }
+
+    /**
+     * Filters [PLAN_READY]...[/PLAN_READY] blocks from streaming output.
+     * Sends only visible text as token events to the frontend.
+     */
+    private class PlanReadyFilter {
+        private final SseEmitter emitter;
+        private final StringBuilder pending = new StringBuilder();
+        private boolean inPlanReady = false;
+
+        PlanReadyFilter(SseEmitter emitter) {
+            this.emitter = emitter;
+        }
+
+        void feed(String chunk) {
+            pending.append(chunk);
+            while (true) {
+                String current = pending.toString();
+                if (!inPlanReady) {
+                    int idx = current.indexOf("[PLAN_READY]");
+                    if (idx >= 0) {
+                        String before = current.substring(0, idx);
+                        pending.delete(0, idx + "[PLAN_READY]".length());
+                        inPlanReady = true;
+                        if (!before.isEmpty()) {
+                            sendToken(before);
+                        }
+                        continue;
+                    }
+                    // Check for partial tag at end
+                    String partialPrefix = partialTagPrefix(current);
+                    if (partialPrefix.length() > 0) {
+                        int keepFrom = current.length() - partialPrefix.length();
+                        String safe = current.substring(0, keepFrom);
+                        pending.delete(0, keepFrom);
+                        if (!safe.isEmpty()) {
+                            sendToken(safe);
+                        }
+                        break;
+                    }
+                    sendToken(current);
+                    pending.setLength(0);
+                    break;
+                } else {
+                    int idx = current.indexOf("[/PLAN_READY]");
+                    if (idx >= 0) {
+                        pending.delete(0, idx + "[/PLAN_READY]".length());
+                        inPlanReady = false;
+                        continue;
+                    }
+                    // Still inside PLAN_READY, consume all but possible end-tag prefix
+                    String partialClose = partialClosePrefix(current);
+                    if (partialClose.length() > 0) {
+                        int keepFrom = current.length() - partialClose.length();
+                        pending.delete(0, keepFrom);
+                    } else {
+                        pending.setLength(0);
+                    }
+                    break;
+                }
+            }
+        }
+
+        void flush() {
+            String remaining = pending.toString();
+            if (!remaining.isEmpty() && !inPlanReady) {
+                sendToken(remaining);
+            }
+            pending.setLength(0);
+        }
+
+        private void sendToken(String text) {
+            sendSseEvent(emitter, "token", Map.of("content", text));
+        }
+
+        private static String partialTagPrefix(String s) {
+            String tag = "[PLAN_READY]";
+            for (int i = Math.min(tag.length() - 1, s.length()); i >= 1; i--) {
+                if (tag.startsWith(s.substring(s.length() - i))) return s.substring(s.length() - i);
+            }
+            return "";
+        }
+
+        private static String partialClosePrefix(String s) {
+            String tag = "[/PLAN_READY]";
+            for (int i = Math.min(tag.length() - 1, s.length()); i >= 1; i--) {
+                if (tag.startsWith(s.substring(s.length() - i))) return s.substring(s.length() - i);
+            }
+            return "";
+        }
     }
 }

@@ -8,6 +8,7 @@ const AiClassroom = {
     scenarios: [],
     planSummary: null,
     isSending: false,
+    currentAssistantBubbleId: null,
 
     async render(params = {}) {
         this.direction = params.direction || 'BUILD';
@@ -17,6 +18,7 @@ const AiClassroom = {
         this.selectedSceneKey = params.sceneKey || null;
         this.selectedTargetName = params.targetName || '';
         this.isSending = false;
+        this.currentAssistantBubbleId = null;
 
         document.getElementById('top-nav').classList.remove('hidden');
         document.getElementById('bottom-nav').classList.remove('hidden');
@@ -194,6 +196,7 @@ const AiClassroom = {
         input.value = '';
         this.isSending = true;
         if (sendBtn) sendBtn.disabled = true;
+        if (input) input.disabled = true;
         this.showTyping();
 
         try {
@@ -209,48 +212,90 @@ const AiClassroom = {
         } finally {
             this.isSending = false;
             if (sendBtn) sendBtn.disabled = false;
+            if (input) input.disabled = false;
+            input?.focus();
         }
     },
 
     async startPlanSession(topic) {
-        const res = await apiClient.post('/ai/plan-init', {
+        const self = this;
+        let fullResponse = '';
+
+        await apiClient.streamPost('/ai/plan-init/stream', {
             direction: this.direction,
             topic,
             sceneKey: this.selectedSceneKey
-        }, 90000);
-        this.hideTyping();
-        const data = res?.data || {};
-        if (!data.sessionId) {
-            throw new Error('AI 初始化响应异常');
+        }, {
+            onMeta(data) {
+                if (data.sessionId) self.sessionId = data.sessionId;
+            },
+            onToken(data) {
+                const text = data.content || '';
+                fullResponse += text;
+                self.updateCurrentAiBubble(fullResponse, false);
+                console.debug('[stream] current assistant message length', fullResponse.length);
+            },
+            onPlanReady(data) {
+                self.planReady = true;
+                self.showPlanSummary(data.planSummary || {});
+                document.getElementById('plan-confirm-bar')?.classList.remove('hidden');
+                self.appendMessage('system', '计划已生成，可点击下方按钮确认并开始执行。');
+            },
+            onDone() {
+                self.hideTyping();
+                self.updateCurrentAiBubble(fullResponse, true);
+                if (!fullResponse.trim()) {
+                    self.appendMessage('system', 'AI 暂无回复，请补充你的目标细节后再试。');
+                }
+                self.currentAssistantBubbleId = null;
+            },
+            onError(data) {
+                self.hideTyping();
+                self.appendMessage('system', '发送失败：' + (data.message || '未知错误'));
+                Toast.show('发送失败：' + (data.message || '未知错误'));
+            }
+        });
+
+        if (!this.sessionId) {
+            this.appendMessage('system', 'AI 初始化响应异常');
         }
-        this.sessionId = data.sessionId;
-        if (!data.aiMessage || !String(data.aiMessage).trim()) {
-            this.appendMessage('system', 'AI 暂无回复，请补充你的目标细节后再试。');
-            return;
-        }
-        this.appendMessage('ai', data.aiMessage);
     },
 
     async continuePlanSession(message) {
-        const res = await apiClient.post('/ai/plan-chat', {
+        const self = this;
+        let fullResponse = '';
+
+        await apiClient.streamPost('/ai/plan-chat/stream', {
             sessionId: this.sessionId,
             message,
             sceneKey: this.selectedSceneKey
-        }, 90000);
-        this.hideTyping();
-
-        const data = res?.data || {};
-        if (!data.aiMessage || !String(data.aiMessage).trim()) {
-            throw new Error('AI 暂无回复，请稍后重试');
-        }
-        this.appendMessage('ai', data.aiMessage);
-
-        if (data.planReady && data.planSummary) {
-            this.planReady = true;
-            this.showPlanSummary(data.planSummary);
-            document.getElementById('plan-confirm-bar')?.classList.remove('hidden');
-            this.appendMessage('system', '计划已生成，可点击下方按钮确认并开始执行。');
-        }
+        }, {
+            onToken(data) {
+                const text = data.content || '';
+                fullResponse += text;
+                self.updateCurrentAiBubble(fullResponse, false);
+                console.debug('[stream] current assistant message length', fullResponse.length);
+            },
+            onPlanReady(data) {
+                self.planReady = true;
+                self.showPlanSummary(data.planSummary || {});
+                document.getElementById('plan-confirm-bar')?.classList.remove('hidden');
+                self.appendMessage('system', '计划已生成，可点击下方按钮确认并开始执行。');
+            },
+            onDone() {
+                self.hideTyping();
+                self.updateCurrentAiBubble(fullResponse, true);
+                if (!fullResponse.trim()) {
+                    self.appendMessage('system', 'AI 暂无回复，请稍后重试');
+                }
+                self.currentAssistantBubbleId = null;
+            },
+            onError(data) {
+                self.hideTyping();
+                self.appendMessage('system', '发送失败：' + (data.message || '未知错误'));
+                Toast.show('发送失败：' + (data.message || '未知错误'));
+            }
+        });
     },
 
     showPlanSummary(summary) {
@@ -288,16 +333,38 @@ const AiClassroom = {
         const messagesContainer = document.getElementById('classroom-chat');
         if (!messagesContainer) return;
         const typingEl = document.createElement('div');
+        this.currentAssistantBubbleId = 'classroom-assistant-' + Date.now();
         typingEl.className = 'chat-message ai typing';
-        typingEl.id = 'typingIndicator';
+        typingEl.id = this.currentAssistantBubbleId;
+        typingEl.dataset.streamingAssistant = 'true';
         typingEl.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
         messagesContainer.appendChild(typingEl);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     },
 
     hideTyping() {
-        const typingEl = document.getElementById('typingIndicator');
-        if (typingEl) typingEl.remove();
+        const typingEl = this.currentAssistantBubbleId
+            ? document.getElementById(this.currentAssistantBubbleId)
+            : document.querySelector('#classroom-chat .chat-message.ai.typing');
+        if (typingEl?.classList.contains('typing')) typingEl.remove();
+    },
+
+    updateCurrentAiBubble(text, finalRender = false) {
+        const container = document.getElementById('classroom-chat');
+        if (!container) return;
+        let bubble = this.currentAssistantBubbleId ? document.getElementById(this.currentAssistantBubbleId) : null;
+        if (!bubble) {
+            this.currentAssistantBubbleId = 'classroom-assistant-' + Date.now();
+            bubble = document.createElement('div');
+            bubble.id = this.currentAssistantBubbleId;
+            bubble.dataset.streamingAssistant = 'true';
+            container.appendChild(bubble);
+        }
+        bubble.className = 'chat-message ai';
+        bubble.innerHTML = finalRender
+            ? this.simpleMarkdown(text || '')
+            : this.escapeHtml(text || '').replace(/\n/g, '<br>');
+        container.scrollTop = container.scrollHeight;
     },
 
     async confirmPlan() {

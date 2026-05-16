@@ -4,6 +4,7 @@ const PlanDetailPage = {
     planData: null,
     assistSceneKey: 'daily_checkin',
     assistScenarios: [],
+    isAssistSending: false,
 
     async render(params = {}) {
         if (!params.planId) {
@@ -215,6 +216,7 @@ const PlanDetailPage = {
     },
 
     async sendAssistMessage() {
+        if (this.isAssistSending) return;
         const input = document.getElementById('assist-chat-input');
         const message = input.value.trim();
         if (!message) return;
@@ -222,32 +224,68 @@ const PlanDetailPage = {
         const container = document.getElementById('assist-chat-messages');
         const sendBtn = document.getElementById('assist-chat-send');
         const loadingId = 'assist-loading-' + Date.now();
+        const streamBubbleId = 'assist-stream-' + Date.now();
         container.insertAdjacentHTML('beforeend', `<div class="chat-bubble user">${this.escapeHtml(message)}</div>`);
-        container.insertAdjacentHTML('beforeend', `<div class="chat-bubble ai loading" id="${loadingId}">AI 正在整理建议...</div>`);
+        container.insertAdjacentHTML('beforeend', `<div class="chat-bubble ai loading" id="${loadingId}">AI 正在思考...</div>`);
         container.scrollTop = container.scrollHeight;
         input.value = '';
+        input.disabled = true;
         sendBtn.disabled = true;
+        this.isAssistSending = true;
 
-        try {
-            const reply = await apiClient.post('/ai/assist-chat', {
-                planId: this.planId,
-                message: message,
-                sceneKey: this.assistSceneKey
-            }, 90000);
-            const loading = document.getElementById(loadingId);
-            if (loading) loading.remove();
-            if (!reply.data) {
-                throw new Error('AI 暂无回复，请稍后重试');
+        const self = this;
+        let fullResponse = '';
+        let firstToken = true;
+
+        await apiClient.streamPost('/ai/assist-chat/stream', {
+            planId: this.planId,
+            message: message,
+            sceneKey: this.assistSceneKey
+        }, {
+            onToken(data) {
+                if (firstToken) {
+                    const loading = document.getElementById(loadingId);
+                    if (loading) loading.remove();
+                    firstToken = false;
+                }
+                fullResponse += data.content || '';
+                let bubble = document.getElementById(streamBubbleId);
+                if (!bubble) {
+                    bubble = document.createElement('div');
+                    bubble.className = 'chat-bubble ai';
+                    bubble.id = streamBubbleId;
+                    container.appendChild(bubble);
+                }
+                bubble.innerHTML = self.escapeHtml(fullResponse).replace(/\n/g, '<br>');
+                console.debug('[stream] current assistant message length', fullResponse.length);
+                container.scrollTop = container.scrollHeight;
+            },
+            onDone() {
+                const loading = document.getElementById(loadingId);
+                if (loading) loading.remove();
+                const bubble = document.getElementById(streamBubbleId);
+                if (bubble) bubble.removeAttribute('id');
+                input.disabled = false;
+                sendBtn.disabled = false;
+                self.isAssistSending = false;
+            },
+            onError(data) {
+                const loading = document.getElementById(loadingId);
+                if (loading) loading.remove();
+                const bubble = document.getElementById(streamBubbleId);
+                if (bubble) bubble.remove();
+                if (fullResponse) {
+                    const partial = document.createElement('div');
+                    partial.className = 'chat-bubble ai';
+                    partial.innerHTML = self.escapeHtml(fullResponse).replace(/\n/g, '<br>');
+                    container.appendChild(partial);
+                }
+                Toast.show('发送失败: ' + (data.message || '未知错误'));
+                input.disabled = false;
+                sendBtn.disabled = false;
+                self.isAssistSending = false;
             }
-            container.insertAdjacentHTML('beforeend', `<div class="chat-bubble ai">${this.escapeHtml(reply.data).replace(/\n/g, '<br>')}</div>`);
-            container.scrollTop = container.scrollHeight;
-        } catch (e) {
-            const loading = document.getElementById(loadingId);
-            if (loading) loading.remove();
-            Toast.show('发送失败: ' + e.message);
-        } finally {
-            sendBtn.disabled = false;
-        }
+        });
     },
 
     escapeHtml(text) {

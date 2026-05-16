@@ -228,3 +228,15 @@
 | 15.7 | DeepSeek v4-flash 强制模型 | ✅ | 所有 AI 调用统一走后端并强制使用 deepseekv4-flash |
 | 15.8 | AI 指导师后端真实接口 | ✅ | 新增 /api/ai/coach-chat，复用 ai_chat_log 记录独立聊天 |
 | 15.9 | 收口检查与提交准备 | ✅ | 前端 node --check 通过；Java 17 Maven compile/test 通过；DeepSeek 旧模型残留检查通过 |
+
+---
+
+## 模块十六：AI 前端流式输出稳定化
+
+| # | 任务 | 状态 | 说明 |
+|---|------|------|------|
+| 16.1 | main 分支流式实现盘点 | ✅ | 已确认 main 包含 4 个 stream 接口与前端调用，但存在协议顺序/解析/渲染问题 |
+| 16.2 | 后端 SSE 流式接口 | ✅ | 已修正 JSON data、planReady/done 顺序、DeepSeek SSE 读取与安全日志 |
+| 16.3 | 前端 SSE 解析 | ✅ | 已改为 fetch + ReadableStream + buffer 解析 token/meta/planReady/error/done |
+| 16.4 | AI 页面逐 token 渲染 | ✅ | 已改为单 AI 气泡追加 token，流式阶段安全纯文本渲染 |
+| 16.5 | 验证与提交 | ✅ | Maven 编译、curl -N、浏览器流式渲染、非流式回归完成，准备提交推送 main |

@@ -4,6 +4,7 @@ const AiCoachPage = {
     selectedSceneKey: null,
     messagesByScene: {},
     isSending: false,
+    currentAssistantMessageId: null,
 
     async render(params = {}) {
         document.getElementById('top-nav').classList.remove('hidden');
@@ -13,6 +14,7 @@ const AiCoachPage = {
         this.selectedSceneKey = params.sceneKey
             || localStorage.getItem('selfpline_ai_coach_scene')
             || null;
+        this.currentAssistantMessageId = null;
 
         document.getElementById('page-container').innerHTML = `
             <div class="ai-coach-shell">
@@ -151,7 +153,7 @@ const AiCoachPage = {
         if (!container) return;
         const messages = this.messagesByScene[sceneKey] || [];
         container.innerHTML = messages.map(msg => `
-            <div class="ai-coach-message ${msg.role}">
+            <div class="ai-coach-message ${msg.role}" data-message-id="${this.escapeAttr(msg.id || '')}">
                 ${this.escapeHtml(msg.text || '').replace(/\n/g, '<br>')}
             </div>
         `).join('');
@@ -160,16 +162,18 @@ const AiCoachPage = {
 
     appendMessage(role, text) {
         const sceneKey = this.selectedSceneKey;
-        if (!sceneKey) return;
+        if (!sceneKey) return null;
         if (!Array.isArray(this.messagesByScene[sceneKey])) {
             this.messagesByScene[sceneKey] = [];
         }
-        this.messagesByScene[sceneKey].push({ role, text });
+        const id = 'coach-message-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+        this.messagesByScene[sceneKey].push({ id, role, text });
         this.renderMessages(sceneKey);
+        return id;
     },
 
     showTyping() {
-        this.appendMessage('loading', 'AI 正在思考...');
+        this.currentAssistantMessageId = this.appendMessage('loading', 'AI 正在思考...');
     },
 
     hideTyping() {
@@ -177,6 +181,53 @@ const AiCoachPage = {
         if (!sceneKey || !Array.isArray(this.messagesByScene[sceneKey])) return;
         this.messagesByScene[sceneKey] = this.messagesByScene[sceneKey].filter(item => item.role !== 'loading');
         this.renderMessages(sceneKey);
+    },
+
+    updateLastAiBubble(text) {
+        const sceneKey = this.selectedSceneKey;
+        if (!sceneKey || !Array.isArray(this.messagesByScene[sceneKey])) return;
+        const msgs = this.messagesByScene[sceneKey];
+        let msg = msgs.find(item => item.id === this.currentAssistantMessageId);
+        if (!msg) {
+            const id = 'coach-message-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+            msg = { id, role: 'ai', text: '' };
+            this.currentAssistantMessageId = id;
+            msgs.push(msg);
+        }
+        msg.role = 'ai';
+        msg.text = text;
+
+        const container = document.getElementById('ai-coach-messages');
+        let bubble = container?.querySelector(`[data-message-id="${msg.id}"]`);
+        if (!bubble && container) {
+            bubble = document.createElement('div');
+            bubble.dataset.messageId = msg.id;
+            container.appendChild(bubble);
+        }
+        if (bubble && container) {
+            bubble.className = 'ai-coach-message ai';
+            bubble.innerHTML = this.escapeHtml(text || '').replace(/\n/g, '<br>');
+            container.scrollTop = container.scrollHeight;
+        } else {
+            this.renderMessages(sceneKey);
+        }
+    },
+
+    finalizeLastAiBubble(text) {
+        if (!this.currentAssistantMessageId) return;
+        const sceneKey = this.selectedSceneKey;
+        const msg = this.messagesByScene[sceneKey]?.find(item => item.id === this.currentAssistantMessageId);
+        if (msg) {
+            msg.role = 'ai';
+            msg.text = text || msg.text || '';
+            const container = document.getElementById('ai-coach-messages');
+            const bubble = container?.querySelector(`[data-message-id="${msg.id}"]`);
+            if (bubble) {
+                bubble.className = 'ai-coach-message ai';
+                bubble.innerHTML = this.escapeHtml(msg.text || '').replace(/\n/g, '<br>');
+            }
+        }
+        this.currentAssistantMessageId = null;
     },
 
     async sendMessage() {
@@ -190,28 +241,43 @@ const AiCoachPage = {
         input.value = '';
         this.isSending = true;
         if (sendBtn) sendBtn.disabled = true;
+        if (input) input.disabled = true;
         this.showTyping();
 
-        try {
-            const result = await apiClient.post('/ai/coach-chat', {
-                sceneKey: this.selectedSceneKey,
-                message
-            }, 90000);
-            this.hideTyping();
-            const aiMessage = result?.data;
-            if (!aiMessage || typeof aiMessage !== 'string' || !aiMessage.trim()) {
-                throw new Error('AI 暂无回复，请稍后再试');
+        const self = this;
+        let fullResponse = '';
+
+        await apiClient.streamPost('/ai/coach-chat/stream', {
+            sceneKey: this.selectedSceneKey,
+            message
+        }, {
+            onToken(data) {
+                const text = data.content || '';
+                fullResponse += text;
+                self.updateLastAiBubble(fullResponse);
+                console.debug('[stream] current assistant message length', fullResponse.length);
+            },
+            onDone() {
+                self.hideTyping();
+                self.finalizeLastAiBubble(fullResponse);
+                self.saveLastSnapshot(fullResponse);
+                self.isSending = false;
+                if (sendBtn) sendBtn.disabled = false;
+                if (input) input.disabled = false;
+                input?.focus();
+            },
+            onError(data) {
+                self.hideTyping();
+                if (!fullResponse) {
+                    self.appendMessage('system', '发送失败：' + (data.message || '未知错误'));
+                }
+                Toast.show('发送失败：' + (data.message || '未知错误'));
+                self.isSending = false;
+                if (sendBtn) sendBtn.disabled = false;
+                if (input) input.disabled = false;
+                input?.focus();
             }
-            this.appendMessage('ai', aiMessage);
-            this.saveLastSnapshot(aiMessage);
-        } catch (e) {
-            this.hideTyping();
-            this.appendMessage('system', `发送失败：${e.message}`);
-            Toast.show(`发送失败：${e.message}`);
-        } finally {
-            this.isSending = false;
-            if (sendBtn) sendBtn.disabled = false;
-        }
+        });
     },
 
     saveLastSnapshot(aiMessage) {
