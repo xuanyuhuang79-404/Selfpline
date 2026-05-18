@@ -20,7 +20,7 @@ const AiCoachPage = {
             <div class="ai-coach-shell">
                 <aside class="ai-coach-identities">
                     <div class="ai-coach-identities-head">
-                        <button class="classroom-back-btn" type="button" onclick="PageRouter.navigate('home')" aria-label="返回首页">←</button>
+                        <button class="classroom-back-btn" type="button" onclick="PageRouter.navigate('dashboard')" aria-label="返回 Dashboard">←</button>
                         <div>
                             <p class="page-kicker">AI 指导师</p>
                             <h2>选择你的指导身份</h2>

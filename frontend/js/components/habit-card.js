@@ -5,7 +5,7 @@ const HabitCard = {
     render(plan) {
         const directionClass = plan.planDirection === 1 ? 'build' : 'quit';
         const badgeIcon = plan.planDirection === 1 ? '🌱' : '🚫';
-        const accentColor = plan.themeColor || (plan.planDirection === 1 ? '#8BEA3C' : '#E9340B');
+        const accentColor = this.getSafeColor(plan.themeColor, plan.planDirection === 1 ? '#8BEA3C' : '#E9340B');
         const displayName = this.escapeHtml(plan.shortName || plan.targetName || '未命名计划');
         const fullName = this.escapeHtml(plan.targetName || plan.shortName || '未命名计划');
         const icon = this.escapeHtml(plan.icon || '📋');
@@ -54,7 +54,11 @@ const HabitCard = {
             });
             Toast.show(nextCompleted ? '今日计划已完成' : '今日计划已取消完成');
             // Refresh cards to show updated state
-            if (typeof HomePage !== 'undefined' && HomePage.loadCards) {
+            if (PageRouter?.currentPage === 'today' && typeof TodayPage !== 'undefined' && TodayPage.loadPlans) {
+                TodayPage.loadPlans();
+            } else if ((PageRouter?.currentPage === 'dashboard' || PageRouter?.currentPage === 'home') && typeof DashboardPage !== 'undefined' && DashboardPage.loadData) {
+                DashboardPage.loadData();
+            } else if (typeof HomePage !== 'undefined' && HomePage.loadCards) {
                 HomePage.loadCards();
             }
         } catch (e) {
@@ -69,5 +73,9 @@ const HabitCard = {
         const div = document.createElement('div');
         div.textContent = text || '';
         return div.innerHTML;
+    },
+
+    getSafeColor(color, fallback) {
+        return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color || '') ? color : fallback;
     }
 };

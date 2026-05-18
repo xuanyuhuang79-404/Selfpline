@@ -1,6 +1,20 @@
 -- Selfpline Database Schema
 -- All tables use IF NOT EXISTS for idempotent execution
 
+CREATE TABLE IF NOT EXISTS `sys_user` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `username` VARCHAR(50) NOT NULL,
+    `password` VARCHAR(128) NOT NULL,
+    `height` DECIMAL(5,2) DEFAULT NULL COMMENT '身高(cm)',
+    `weight` DECIMAL(5,2) DEFAULT NULL COMMENT '体重(kg)',
+    `health_goal` VARCHAR(100) DEFAULT NULL,
+    `medical_history` TEXT,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `uk_username` (`username`),
+    INDEX `idx_username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `ai_chat_log` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `user_id` BIGINT NOT NULL,
@@ -44,8 +58,8 @@ CREATE TABLE IF NOT EXISTS `ai_custom_plan` (
     `plan_content` TEXT,
     `coach_type` VARCHAR(50) DEFAULT NULL,
     `start_date` DATE NOT NULL,
-    `end_date` DATE NOT NULL,
-    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '0=ABANDONED 1=ACTIVE 2=COMPLETED',
+    `end_date` DATE DEFAULT NULL,
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '0=ABANDONED/DELETED 1=ACTIVE 2=COMPLETED 3=ARCHIVED',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`),
@@ -93,4 +107,50 @@ CREATE TABLE IF NOT EXISTS `user_daily_journal` (
     PRIMARY KEY (`id`),
     UNIQUE INDEX `uk_user_date` (`user_id`, `record_date`),
     INDEX `idx_user_date` (`user_id`, `record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `community_post` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `content` VARCHAR(500) DEFAULT NULL,
+    `image_url` VARCHAR(255) DEFAULT NULL,
+    `like_count` INT NOT NULL DEFAULT 0,
+    `comment_count` INT NOT NULL DEFAULT 0,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `community_post_like` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `post_id` BIGINT NOT NULL,
+    `user_id` BIGINT NOT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `uk_post_user` (`post_id`, `user_id`),
+    INDEX `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `community_comment` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `post_id` BIGINT NOT NULL,
+    `user_id` BIGINT NOT NULL,
+    `content` VARCHAR(200) NOT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_post_time` (`post_id`, `create_time`),
+    INDEX `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `sys_notification` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `notify_type` TINYINT DEFAULT NULL,
+    `title` VARCHAR(100) DEFAULT NULL,
+    `content` TEXT,
+    `is_read` TINYINT(1) NOT NULL DEFAULT 0,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_read` (`user_id`, `is_read`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

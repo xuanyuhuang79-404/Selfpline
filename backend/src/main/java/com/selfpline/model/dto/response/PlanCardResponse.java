@@ -17,4 +17,8 @@ public class PlanCardResponse {
     private Integer streakDays;
     private Boolean todayCompleted;
     private Double progressPercent;
+    private Integer status;
+    private String startDate;
+    private String endDate;
+    private Integer completedDays;
 }

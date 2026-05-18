@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS ai_custom_plan (
     coach_type VARCHAR(50) COMMENT '关联教练身份',
     start_date DATE NOT NULL,
     end_date DATE,
-    status TINYINT DEFAULT 1 COMMENT '0-废弃 1-执行中 2-已完成',
+    status TINYINT DEFAULT 1 COMMENT '0-废弃/删除 1-执行中 2-已完成 3-已归档',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),
     INDEX idx_status (status),
@@ -127,7 +127,32 @@ CREATE TABLE IF NOT EXISTS community_post (
     FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区动态';
 
--- 9. 系统通知表
+-- 9. 社区点赞关系表
+CREATE TABLE IF NOT EXISTS community_post_like (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_post_user (post_id, user_id),
+    INDEX idx_user_id (user_id),
+    FOREIGN KEY (post_id) REFERENCES community_post(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区点赞关系';
+
+-- 10. 社区评论表
+CREATE TABLE IF NOT EXISTS community_comment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    content VARCHAR(200) NOT NULL,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_post_time (post_id, create_time),
+    INDEX idx_user_id (user_id),
+    FOREIGN KEY (post_id) REFERENCES community_post(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区评论';
+
+-- 11. 系统通知表
 CREATE TABLE IF NOT EXISTS sys_notification (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,

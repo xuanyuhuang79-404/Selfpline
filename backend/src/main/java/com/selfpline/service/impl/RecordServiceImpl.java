@@ -13,6 +13,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,9 +47,80 @@ public class RecordServiceImpl implements RecordService {
     }
 
     @Override
+    public List<DailyRecordResponse> getHistory(Long userId, LocalDate startDate, LocalDate endDate, Integer limit) {
+        LocalDate[] range = normalizeRange(startDate, endDate, 30);
+        List<HealthDailyRecord> healthRecords = healthRecordMapper.findByUserIdAndDateRange(userId, range[0], range[1]);
+        List<UserDailyJournal> journals = journalMapper.findByUserIdAndDateRange(userId, range[0], range[1]);
+
+        Map<LocalDate, HealthDailyRecord> healthByDate = healthRecords.stream()
+                .filter(record -> record.getRecordDate() != null)
+                .collect(Collectors.toMap(HealthDailyRecord::getRecordDate, record -> record, (a, b) -> a, LinkedHashMap::new));
+        Map<LocalDate, UserDailyJournal> journalByDate = journals.stream()
+                .filter(journal -> journal.getRecordDate() != null)
+                .collect(Collectors.toMap(UserDailyJournal::getRecordDate, journal -> journal, (a, b) -> a, LinkedHashMap::new));
+
+        List<LocalDate> dates = new ArrayList<>();
+        dates.addAll(healthByDate.keySet());
+        for (LocalDate date : journalByDate.keySet()) {
+            if (!dates.contains(date)) {
+                dates.add(date);
+            }
+        }
+        dates.sort(Comparator.reverseOrder());
+
+        int safeLimit = limit == null ? 60 : Math.min(Math.max(limit, 1), 180);
+        return dates.stream()
+                .limit(safeLimit)
+                .map(date -> toResponse(date, healthByDate.get(date), journalByDate.get(date)))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<String, Object> getStats(Long userId, LocalDate startDate, LocalDate endDate) {
+        LocalDate[] range = normalizeRange(startDate, endDate, 30);
+        List<HealthDailyRecord> records = healthRecordMapper.findByUserIdAndDateRange(userId, range[0], range[1]);
+
+        List<String> dates = new ArrayList<>();
+        List<Object> weights = new ArrayList<>();
+        List<Integer> caloriesIn = new ArrayList<>();
+        List<Integer> caloriesOut = new ArrayList<>();
+        List<Object> sleepHours = new ArrayList<>();
+
+        for (HealthDailyRecord record : records) {
+            dates.add(record.getRecordDate() != null ? record.getRecordDate().toString() : "");
+            weights.add(record.getCurrentWeight());
+            caloriesIn.add(record.getCaloriesIntake() != null ? record.getCaloriesIntake() : 0);
+            caloriesOut.add(record.getCaloriesBurned() != null ? record.getCaloriesBurned() : 0);
+            sleepHours.add(record.getSleepHours());
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("startDate", range[0].toString());
+        result.put("endDate", range[1].toString());
+        result.put("dates", dates);
+        result.put("weights", weights);
+        result.put("caloriesIn", caloriesIn);
+        result.put("caloriesOut", caloriesOut);
+        result.put("sleepHours", sleepHours);
+        result.put("recordCount", records.size());
+        result.put("latestWeight", records.stream()
+                .map(HealthDailyRecord::getCurrentWeight)
+                .filter(Objects::nonNull)
+                .reduce((first, second) -> second)
+                .orElse(null));
+        result.put("avgSleepHours", records.stream()
+                .map(HealthDailyRecord::getSleepHours)
+                .filter(Objects::nonNull)
+                .mapToDouble(value -> value.doubleValue())
+                .average()
+                .orElse(0));
+        return result;
+    }
+
+    @Override
     public void saveTodayRecord(Long userId, DailyRecordRequest request) {
         DailyRecordRequest safeRequest = request != null ? request : new DailyRecordRequest();
-        LocalDate targetDate = safeRequest.getRecordDate() != null ? safeRequest.getRecordDate() : LocalDate.now();
+        LocalDate targetDate = LocalDate.now();
         upsertHealthRecord(userId, targetDate, safeRequest);
         upsertJournal(userId, targetDate, safeRequest.getDiaryText());
     }
@@ -110,5 +188,32 @@ public class RecordServiceImpl implements RecordService {
                 .eq(UserDailyJournal::getUserId, userId)
                 .eq(UserDailyJournal::getRecordDate, recordDate)
                 .last("LIMIT 1"));
+    }
+
+    private DailyRecordResponse toResponse(LocalDate date, HealthDailyRecord healthRecord, UserDailyJournal journal) {
+        return DailyRecordResponse.builder()
+                .recordDate(date)
+                .currentWeight(healthRecord != null ? healthRecord.getCurrentWeight() : null)
+                .caloriesIntake(healthRecord != null ? healthRecord.getCaloriesIntake() : null)
+                .caloriesBurned(healthRecord != null ? healthRecord.getCaloriesBurned() : null)
+                .sleepHours(healthRecord != null ? healthRecord.getSleepHours() : null)
+                .diaryText(journal != null ? journal.getDiaryText() : "")
+                .healthRecordExists(healthRecord != null)
+                .journalExists(journal != null)
+                .build();
+    }
+
+    private LocalDate[] normalizeRange(LocalDate startDate, LocalDate endDate, int defaultDays) {
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+        LocalDate start = startDate != null ? startDate : end.minusDays(defaultDays - 1L);
+        if (start.isAfter(end)) {
+            LocalDate tmp = start;
+            start = end;
+            end = tmp;
+        }
+        if (start.plusDays(365).isBefore(end)) {
+            start = end.minusDays(365);
+        }
+        return new LocalDate[]{start, end};
     }
 }

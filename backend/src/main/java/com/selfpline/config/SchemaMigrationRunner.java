@@ -17,6 +17,7 @@ public class SchemaMigrationRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         ensureAiCustomPlanShortName();
+        ensureCommunityTables();
     }
 
     private void ensureAiCustomPlanShortName() {
@@ -33,6 +34,51 @@ public class SchemaMigrationRunner implements ApplicationRunner {
                 AFTER target_name
                 """);
         log.info("Schema migration applied: ai_custom_plan.short_name");
+    }
+
+    private void ensureCommunityTables() {
+        if (!tableExists("community_post")) {
+            jdbcTemplate.execute("""
+                    CREATE TABLE IF NOT EXISTS community_post (
+                        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                        user_id BIGINT NOT NULL,
+                        content VARCHAR(500),
+                        image_url VARCHAR(255),
+                        like_count INT DEFAULT 0,
+                        comment_count INT DEFAULT 0,
+                        create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_user_id (user_id),
+                        INDEX idx_create_time (create_time),
+                        FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区动态'
+                    """);
+            log.info("Schema migration applied: community_post");
+        }
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS community_comment (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    post_id BIGINT NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    content VARCHAR(200) NOT NULL,
+                    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_post_time (post_id, create_time),
+                    INDEX idx_user_id (user_id),
+                    FOREIGN KEY (post_id) REFERENCES community_post(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区评论'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS community_post_like (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    post_id BIGINT NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uk_post_user (post_id, user_id),
+                    INDEX idx_user_id (user_id),
+                    FOREIGN KEY (post_id) REFERENCES community_post(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区点赞关系'
+                """);
     }
 
     private boolean tableExists(String tableName) {

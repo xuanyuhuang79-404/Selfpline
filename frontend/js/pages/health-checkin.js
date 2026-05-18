@@ -54,6 +54,7 @@ const HealthCheckinPage = {
     diaryLimit: 1000,
     isSubmitted: false,
     isSubmitting: false,
+    rangeDays: 30,
 
     async render() {
         document.getElementById('top-nav').classList.remove('hidden');
@@ -102,6 +103,39 @@ const HealthCheckinPage = {
                     <button class="btn btn-primary record-submit-btn" id="btn-submit-record" type="button">提交今日记录</button>
                     <button class="record-reset-btn hidden" id="btn-reset-record" type="button">重置</button>
                 </div>
+
+                <section class="record-trends-card">
+                    <div class="section-heading">
+                        <h2>历史趋势</h2>
+                        <span>身体记录</span>
+                    </div>
+                    <div class="record-range-row">
+                        <label>
+                            <span>开始日期</span>
+                            <input id="record-start-date" type="date">
+                        </label>
+                        <label>
+                            <span>结束日期</span>
+                            <input id="record-end-date" type="date">
+                        </label>
+                        <button class="workspace-link-btn" id="record-range-apply" type="button">查看</button>
+                    </div>
+                    <div class="workspace-grid two-col record-chart-grid">
+                        <div class="chart-panel compact-chart" id="record-weight-chart"></div>
+                        <div class="chart-panel compact-chart" id="record-sleep-chart"></div>
+                    </div>
+                    <div class="chart-panel compact-chart" id="record-calorie-chart"></div>
+                </section>
+
+                <section class="record-history-card">
+                    <div class="section-heading">
+                        <h2>历史记录</h2>
+                        <span id="record-history-count">加载中</span>
+                    </div>
+                    <div id="record-history-list" class="record-history-list">
+                        <div class="panel-loading">加载中...</div>
+                    </div>
+                </section>
             </div>
         `;
 
@@ -109,7 +143,9 @@ const HealthCheckinPage = {
         this.bindJournal();
         document.getElementById('btn-submit-record')?.addEventListener('click', () => this.submit());
         document.getElementById('btn-reset-record')?.addEventListener('click', () => this.resetTodayRecord());
+        this.bindRangeControls();
         await this.loadTodayRecord();
+        await this.loadHistoryAndStats();
     },
 
     renderMetricCard(metric) {
@@ -199,7 +235,6 @@ const HealthCheckinPage = {
 
         try {
             await apiClient.post('/record/today', {
-                recordDate: this.getTodayDate(),
                 currentWeight: this.values.weight,
                 caloriesIntake: this.values.caloriesIn,
                 caloriesBurned: this.values.caloriesOut,
@@ -209,6 +244,7 @@ const HealthCheckinPage = {
             Toast.show('今日日志已提交');
             this.isSubmitted = true;
             this.applySubmittedState();
+            await this.loadHistoryAndStats();
         } catch (e) {
             Toast.show('保存失败: ' + e.message);
         } finally {
@@ -237,6 +273,7 @@ const HealthCheckinPage = {
             this.updateDiaryCount();
             this.isSubmitted = false;
             this.applySubmittedState();
+            await this.loadHistoryAndStats();
             Toast.show('今日记录已重置');
         } catch (e) {
             Toast.show('重置失败: ' + e.message);
@@ -317,6 +354,118 @@ const HealthCheckinPage = {
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    },
+
+    bindRangeControls() {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - (this.rangeDays - 1));
+        const startInput = document.getElementById('record-start-date');
+        const endInput = document.getElementById('record-end-date');
+        if (startInput && !startInput.value) startInput.value = this.formatLocalDate(start);
+        if (endInput && !endInput.value) endInput.value = this.formatLocalDate(end);
+        document.getElementById('record-range-apply')?.addEventListener('click', () => this.loadHistoryAndStats());
+    },
+
+    async loadHistoryAndStats() {
+        const list = document.getElementById('record-history-list');
+        const count = document.getElementById('record-history-count');
+        const startDate = document.getElementById('record-start-date')?.value || '';
+        const endDate = document.getElementById('record-end-date')?.value || '';
+        if (startDate && endDate && startDate > endDate) {
+            Toast.show('开始日期不能晚于结束日期');
+            return;
+        }
+        if (list) list.innerHTML = '<div class="panel-loading">加载中...</div>';
+        if (count) count.textContent = '加载中';
+
+        const params = new URLSearchParams();
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate);
+        params.set('limit', '90');
+
+        try {
+            const [historyResult, statsResult] = await Promise.all([
+                apiClient.get('/record/history?' + params.toString()),
+                apiClient.get('/record/stats?' + params.toString())
+            ]);
+            const history = Array.isArray(historyResult.data) ? historyResult.data : [];
+            const stats = statsResult.data || {};
+            this.renderHistory(history);
+            this.renderStatsCharts(stats);
+        } catch (e) {
+            if (list) {
+                list.innerHTML = `<div class="empty-state"><div class="empty-title">历史记录加载失败</div><div class="empty-desc">${this.escapeHtml(e.message)}</div></div>`;
+            }
+            if (count) count.textContent = '失败';
+            ChartKit.renderLine('record-weight-chart', [], [], { emptyText: '体重趋势加载失败' });
+            ChartKit.renderLine('record-sleep-chart', [], [], { emptyText: '睡眠趋势加载失败' });
+            ChartKit.renderBars('record-calorie-chart', [], [], { emptyText: '热量趋势加载失败' });
+        }
+    },
+
+    renderStatsCharts(stats) {
+        ChartKit.renderLine('record-weight-chart', stats.dates || [], stats.weights || [], {
+            label: '体重趋势',
+            color: '#2ea7df',
+            colorTo: '#7c8bff',
+            emptyText: '还没有体重记录'
+        });
+        ChartKit.renderLine('record-sleep-chart', stats.dates || [], stats.sleepHours || [], {
+            label: '睡眠趋势',
+            color: '#9b25e8',
+            colorTo: '#2ea7df',
+            emptyText: '还没有睡眠记录'
+        });
+        ChartKit.renderBars('record-calorie-chart', stats.dates || [], stats.caloriesIn || [], {
+            label: '摄入卡路里',
+            emptyText: '还没有热量记录'
+        });
+    },
+
+    renderHistory(history) {
+        const list = document.getElementById('record-history-list');
+        const count = document.getElementById('record-history-count');
+        if (count) count.textContent = history.length ? `${history.length} 条` : '暂无';
+        if (!list) return;
+        if (!history.length) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-title">还没有历史记录</div>
+                    <div class="empty-desc">提交今日记录后，这里会保留身体状态和小记。</div>
+                </div>
+            `;
+            return;
+        }
+        list.innerHTML = history.map(item => `
+            <article class="record-history-item">
+                <div>
+                    <strong>${this.formatDisplayDate(item.recordDate)}</strong>
+                    <span>${this.escapeHtml(item.diaryText || '没有小记')}</span>
+                </div>
+                <div class="record-history-metrics">
+                    <span>${item.currentWeight ?? '--'}kg</span>
+                    <span>${item.sleepHours ?? '--'}h</span>
+                    <span>摄入 ${item.caloriesIntake ?? '--'}</span>
+                    <span>消耗 ${item.caloriesBurned ?? '--'}</span>
+                </div>
+            </article>
+        `).join('');
+    },
+
+    formatDisplayDate(dateValue) {
+        if (Array.isArray(dateValue)) {
+            const [year, month, day] = dateValue;
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+        return this.escapeHtml(String(dateValue || '--'));
+    },
+
+    formatLocalDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     },
 

@@ -30,7 +30,7 @@ const AiClassroom = {
         document.getElementById('page-container').innerHTML = `
             <div class="classroom-layout">
                 <div class="classroom-header">
-                    <button class="classroom-back-btn" onclick="PageRouter.navigate('home')" aria-label="返回首页">←</button>
+                    <button class="classroom-back-btn" onclick="PageRouter.navigate('dashboard')" aria-label="返回 Dashboard">←</button>
                     <div>
                         <p class="page-kicker">创建计划</p>
                         <span class="classroom-title">先选计划类型，再和 AI 细化执行方案</span>
@@ -395,7 +395,7 @@ const AiClassroom = {
                 }
             });
             Toast.show('计划创建成功！');
-            PageRouter.navigate('home');
+            PageRouter.navigate('plans');
         } catch (e) {
             Toast.show(`确认失败：${e.message}`);
         } finally {

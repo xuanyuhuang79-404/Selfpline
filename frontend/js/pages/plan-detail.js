@@ -23,7 +23,7 @@ const PlanDetailPage = {
                         <div class="empty-icon">📋</div>
                         <div class="empty-title">未找到计划</div>
                         <div class="empty-desc">请从首页选择一个计划进入详情页。</div>
-                        <button class="empty-cta" onclick="PageRouter.navigate('home')">返回首页</button>
+                        <button class="empty-cta" onclick="PageRouter.navigate('plans')">返回 Plans</button>
                     </div>
                 </div>
             `;

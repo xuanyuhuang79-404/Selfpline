@@ -6,7 +6,16 @@
       "PowerShell(Get-ChildItem -Path \"e:\\\\Selfpline\" -Recurse -Depth 2 -Directory | ForEach-Object { $_.FullName.Substring\\($_.FullName.IndexOf\\('Selfpline'\\) + 9\\) } | Sort-Object)",
       "Bash(git -C \"e:/Selfpline\" log --oneline -30)",
       "PowerShell(Get-ChildItem -Path \"e:\\\\Selfpline\\\\frontend\" -Recurse | ForEach-Object { $_.FullName.Substring\\($_.FullName.IndexOf\\('frontend'\\)\\) } | Sort-Object)",
-      "PowerShell(Get-ChildItem -Path \"e:\\\\Selfpline\\\\backend\\\\src\" -Recurse -File | ForEach-Object { $_.FullName.Substring\\($_.FullName.IndexOf\\('backend'\\)\\) } | Sort-Object)"
+      "PowerShell(Get-ChildItem -Path \"e:\\\\Selfpline\\\\backend\\\\src\" -Recurse -File | ForEach-Object { $_.FullName.Substring\\($_.FullName.IndexOf\\('backend'\\)\\) } | Sort-Object)",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"e:\\\\Selfpline\\\\mysql\\\\init\")",
+      "Bash(docker compose *)",
+      "Bash(docker exec *)",
+      "Bash(Get-Content \"e:\\\\Selfpline\\\\mysql\\\\init\\\\02-seed.sql\")",
+      "Bash(mvn clean *)",
+      "Bash(mvn spring-boot:run)",
+      "Bash(curl -s http://localhost:8080/api/health)",
+      "Bash(curl -s -X POST http://localhost:8080/api/user/login -H \"Content-Type: application/json\" -d '{\"username\":\"testai\",\"password\":\"test123456\"}')",
+      "Bash(powershell -Command \"Stop-Process -Name java -Force -ErrorAction SilentlyContinue\")"
     ]
   }
 }

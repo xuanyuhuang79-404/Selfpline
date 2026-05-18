@@ -35,6 +35,21 @@ public class RecordController {
         return Result.success(recordService.getRecord(userId, recordDate));
     }
 
+    @GetMapping("/history")
+    public Result<?> getHistory(@RequestAttribute("userId") Long userId,
+                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                @RequestParam(required = false) Integer limit) {
+        return Result.success(recordService.getHistory(userId, startDate, endDate, limit));
+    }
+
+    @GetMapping("/stats")
+    public Result<?> getStats(@RequestAttribute("userId") Long userId,
+                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return Result.success(recordService.getStats(userId, startDate, endDate));
+    }
+
     @PostMapping("/today")
     public Result<Void> saveTodayRecord(@RequestAttribute("userId") Long userId,
                                         @RequestBody(required = false) DailyRecordRequest request) {

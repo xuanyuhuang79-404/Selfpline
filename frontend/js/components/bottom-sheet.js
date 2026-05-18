@@ -14,7 +14,7 @@ const BottomSheet = {
         const sceneKey = card.dataset.sceneKey || (direction === 'QUIT' ? 'quit_stay_up_late' : 'build_exercise_habit');
         const targetName = card.querySelector('.direction-title')?.textContent?.trim() || '';
         this.hide();
-        PageRouter.navigate('ai-classroom', { direction, sceneKey, targetName });
+        PageRouter.navigate('create-plan', { direction, sceneKey, targetName });
     },
 
     show() {

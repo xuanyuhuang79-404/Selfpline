@@ -158,6 +158,98 @@
     box-shadow: var(--shadow-soft);
 }
 
+.record-trends-card,
+.record-history-card {
+    min-width: 0;
+    padding: clamp(18px, 2.4vw, 24px);
+    border: 1px solid rgba(226, 229, 237, 0.84);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--shadow-soft);
+}
+
+.record-range-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 220px)) auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 14px;
+}
+
+.record-range-row label {
+    min-width: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.record-range-row label span {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 850;
+}
+
+.record-range-row input {
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: #fff;
+}
+
+.record-chart-grid {
+    margin-bottom: 14px;
+}
+
+.record-history-list {
+    display: grid;
+    gap: 10px;
+}
+
+.record-history-item {
+    min-width: 0;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: start;
+    border: 1px solid var(--color-border);
+    border-radius: 22px;
+    background: var(--color-surface);
+}
+
+.record-history-item strong,
+.record-history-item span {
+    display: block;
+}
+
+.record-history-item strong {
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.record-history-item span {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.record-history-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.record-history-metrics span {
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 .journal-heading {
     display: flex;
     align-items: flex-start;
@@ -307,6 +399,15 @@
 
     .record-submit-btn {
         width: 100%;
+    }
+
+    .record-range-row,
+    .record-history-item {
+        grid-template-columns: 1fr;
+    }
+
+    .record-history-metrics {
+        justify-content: flex-start;
     }
 }
 

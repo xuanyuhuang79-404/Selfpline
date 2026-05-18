@@ -6,7 +6,8 @@ import lombok.Getter;
 public enum PlanStatus {
     ABANDONED(0, "废弃"),
     ACTIVE(1, "执行中"),
-    COMPLETED(2, "已完成");
+    COMPLETED(2, "已完成"),
+    ARCHIVED(3, "已归档");
 
     private final int code;
     private final String label;

@@ -22,4 +22,9 @@ public interface PlanDailyLogMapper extends BaseMapper<PlanDailyLog> {
 
     @Select("SELECT COUNT(*) FROM plan_daily_log WHERE plan_id = #{planId} AND is_completed = true")
     int countCompletedDays(@Param("planId") Long planId);
+
+    @Select("SELECT * FROM plan_daily_log WHERE user_id = #{userId} AND record_date BETWEEN #{startDate} AND #{endDate} ORDER BY record_date ASC")
+    List<PlanDailyLog> findByUserIdAndDateRange(@Param("userId") Long userId,
+                                                 @Param("startDate") LocalDate startDate,
+                                                 @Param("endDate") LocalDate endDate);
 }

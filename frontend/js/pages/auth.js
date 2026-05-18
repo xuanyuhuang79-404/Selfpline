@@ -69,7 +69,7 @@ const AuthPage = {
             const result = await apiClient.post('/user/login', { username, password });
             apiClient.setToken(result.data.token);
             Toast.show('登录成功');
-            PageRouter.navigate('home');
+            PageRouter.navigate('dashboard');
         } catch (e) {
             Toast.show(e.message || '登录失败');
         } finally {

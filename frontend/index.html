@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/health-checkin.css">
     <link rel="stylesheet" href="css/community.css">
     <link rel="stylesheet" href="css/profile.css">
+    <link rel="stylesheet" href="css/workspace.css">
 </head>
 <body>
     <div id="app" class="app-shell">
@@ -24,31 +25,66 @@
                     <span class="brand-tagline">习惯工作台</span>
                 </span>
             </div>
-            <button class="nav-tab active" data-page="home" type="button">
-                <span class="nav-icon">🏠</span>
+            <button class="nav-tab active" data-page="dashboard" type="button">
+                <span class="nav-icon">📊</span>
                 <span class="nav-copy">
-                    <span class="nav-label">首页</span>
-                    <span class="nav-desc">今日计划与进度</span>
+                    <span class="nav-label">Dashboard</span>
+                    <span class="nav-desc">总览与趋势</span>
                 </span>
             </button>
-            <button class="nav-tab" data-page="health" type="button">
+            <button class="nav-tab" data-page="today" type="button">
+                <span class="nav-icon">✅</span>
+                <span class="nav-copy">
+                    <span class="nav-label">Today</span>
+                    <span class="nav-desc">今日执行</span>
+                </span>
+            </button>
+            <button class="nav-tab" data-page="plans" type="button">
+                <span class="nav-icon">🗂️</span>
+                <span class="nav-copy">
+                    <span class="nav-label">Plans</span>
+                    <span class="nav-desc">计划管理</span>
+                </span>
+            </button>
+            <button class="nav-tab" data-page="create-plan" type="button">
+                <span class="nav-icon">✨</span>
+                <span class="nav-copy">
+                    <span class="nav-label">Create</span>
+                    <span class="nav-desc">AI 创建计划</span>
+                </span>
+            </button>
+            <button class="nav-tab" data-page="ai-coach" type="button">
+                <span class="nav-icon">🤝</span>
+                <span class="nav-copy">
+                    <span class="nav-label">AI Coach</span>
+                    <span class="nav-desc">指导师工作台</span>
+                </span>
+            </button>
+            <button class="nav-tab" data-page="records" type="button">
                 <span class="nav-icon">📒</span>
                 <span class="nav-copy">
-                    <span class="nav-label">记录</span>
-                    <span class="nav-desc">身体与日记</span>
+                    <span class="nav-label">Records</span>
+                    <span class="nav-desc">记录与趋势</span>
+                </span>
+            </button>
+            <button class="nav-tab" data-page="analytics" type="button">
+                <span class="nav-icon">📈</span>
+                <span class="nav-copy">
+                    <span class="nav-label">Analytics</span>
+                    <span class="nav-desc">数据统计</span>
                 </span>
             </button>
             <button class="nav-tab" data-page="community" type="button">
                 <span class="nav-icon">🌐</span>
                 <span class="nav-copy">
-                    <span class="nav-label">社区</span>
+                    <span class="nav-label">Community</span>
                     <span class="nav-desc">分享执行现场</span>
                 </span>
             </button>
             <button class="nav-tab" data-page="profile" type="button">
                 <span class="nav-icon">👤</span>
                 <span class="nav-copy">
-                    <span class="nav-label">我的</span>
+                    <span class="nav-label">Profile</span>
                     <span class="nav-desc">档案与通知</span>
                 </span>
             </button>
@@ -104,13 +140,18 @@
     <script src="js/components/bottom-sheet.js"></script>
     <script src="js/components/coach-selector.js"></script>
     <script src="js/components/daily-tracker.js"></script>
+    <script src="js/components/chart-kit.js"></script>
     <script src="js/components/toast.js"></script>
     <script src="js/pages/auth.js"></script>
+    <script src="js/pages/dashboard.js"></script>
+    <script src="js/pages/today.js"></script>
+    <script src="js/pages/plans.js"></script>
     <script src="js/pages/home.js"></script>
     <script src="js/pages/ai-coach.js"></script>
     <script src="js/pages/ai-classroom.js"></script>
     <script src="js/pages/plan-detail.js"></script>
     <script src="js/pages/health-checkin.js"></script>
+    <script src="js/pages/analytics.js"></script>
     <script src="js/pages/community.js"></script>
     <script src="js/pages/profile.js"></script>
     <script src="js/app.js"></script>

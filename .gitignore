@@ -1,11 +1,15 @@
 .env
 target/
+backend/target/
 *.class
 .idea/
 .vscode/
 *.iml
 bin/
 /frontend/node_modules/
+.chrome-ui-check/
 backup/
+backend/src/main/resources/*.backup_*
 *.sql
 !mysql/init/*.sql
+!backend/src/main/resources/db/*.sql
