@@ -83,6 +83,10 @@ const ProfilePage = {
                     <div class="profile-avatar">🏃</div>
                     <h2 class="profile-username">${this.escapeHtml(user.username)}</h2>
                     <p class="profile-join-date">加入于 ${this.formatDate(user.createdAt)}</p>
+                    <div class="profile-identity-list">
+                        <span>Web 工作台用户</span>
+                        <span>健康档案已连接</span>
+                    </div>
                 </div>
                 <div class="profile-stats">
                     <div class="profile-stat">
@@ -95,18 +99,38 @@ const ProfilePage = {
                     </div>
                     <div class="profile-stat">
                         <span class="stat-value">0</span>
-                        <span class="stat-label">积分</span>
+                        <span class="stat-label">当前成长值</span>
                     </div>
                 </div>
-                <div class="profile-section">
+                <div class="profile-section profile-health-card">
                     <h3 class="section-title">健康档案</h3>
                     <div class="health-tags" id="health-tags-container">
-                        <span class="health-tag info">身高: ${user.height || '--'} cm</span>
-                        <span class="health-tag info">体重: ${user.weight || '--'} kg</span>
-                        <span class="health-tag success">目标: ${user.healthGoal || '--'}</span>
-                        ${user.medicalHistory ? `<span class="health-tag warning">病史: ${this.escapeHtml(user.medicalHistory)}</span>` : ''}
+                        <div class="profile-health-grid">
+                            <div><span>身高</span><strong>${user.height || '--'}<small>cm</small></strong></div>
+                            <div><span>最新体重</span><strong>${user.weight || '--'}<small>kg</small></strong></div>
+                            <div class="profile-health-history"><span>病史</span><p>${this.escapeHtml(user.medicalHistory || '未填写')}</p></div>
+                        </div>
                     </div>
                     <button class="btn btn-text profile-edit-btn" onclick="ProfilePage.showEditForm()">编辑档案</button>
+                </div>
+                <div class="profile-section profile-settings-grid">
+                    <article>
+                        <h3 class="section-title">账号与安全</h3>
+                        <p>当前账号使用登录令牌保护。退出登录会清除本机令牌。</p>
+                        <button class="workspace-link-btn" type="button" onclick="ProfilePage.logout()">退出登录</button>
+                    </article>
+                    <article>
+                        <h3 class="section-title">使用偏好</h3>
+                        <p>偏好轻量记录、AI 计划生成和每日复盘工作流。</p>
+                    </article>
+                    <article>
+                        <h3 class="section-title">数据管理</h3>
+                        <p>健康记录按日期保存，同一天更新，不同日期独立保留。</p>
+                    </article>
+                    <article>
+                        <h3 class="section-title">成长值</h3>
+                        <p>当前成长值为 0，后续会接入更完整的积分规则。</p>
+                    </article>
                 </div>
                 <div class="profile-section">
                     <h3 class="section-title">通知</h3>
@@ -138,12 +162,8 @@ const ProfilePage = {
                     <input type="number" id="editWeight" value="${user.weight || ''}" step="0.1" min="20" max="300">
                 </div>
                 <div class="form-group">
-                    <label>健身目标</label>
-                    <input type="text" id="editGoal" value="${this.escapeAttr(user.healthGoal) || ''}" placeholder="例如：减脂5kg">
-                </div>
-                <div class="form-group">
-                    <label>病史 (用于AI安全指导)</label>
-                    <textarea id="editHistory" placeholder="请如实填写，AI教练将据此调整方案">${this.escapeHtml(user.medicalHistory) || ''}</textarea>
+                    <label>病史 (可填写“无”)</label>
+                    <textarea id="editHistory" placeholder="请如实填写，AI 指导师将据此调整安全边界">${this.escapeHtml(user.medicalHistory) || ''}</textarea>
                 </div>
                 <button class="save-btn" onclick="ProfilePage.saveProfile()">保存</button>
                 <button class="btn btn-text profile-cancel-btn" onclick="ProfilePage.render()">取消</button>
@@ -154,7 +174,6 @@ const ProfilePage = {
     async saveProfile() {
         const height = document.getElementById('editHeight')?.value;
         const weight = document.getElementById('editWeight')?.value;
-        const healthGoal = document.getElementById('editGoal')?.value;
         const medicalHistory = document.getElementById('editHistory')?.value;
         const btn = document.querySelector('.profile-edit-form .save-btn');
 
@@ -162,6 +181,14 @@ const ProfilePage = {
         const weightValue = weight?.trim();
         const parsedHeight = heightValue ? Number(heightValue) : null;
         const parsedWeight = weightValue ? Number(weightValue) : null;
+        if (!heightValue) {
+            Toast.show('身高不能为空');
+            return;
+        }
+        if (!weightValue) {
+            Toast.show('体重不能为空');
+            return;
+        }
         if (heightValue && (Number.isNaN(parsedHeight) || parsedHeight < 50 || parsedHeight > 250)) {
             Toast.show('身高范围50-250cm');
             return;
@@ -170,8 +197,8 @@ const ProfilePage = {
             Toast.show('体重范围20-300kg');
             return;
         }
-        if ((healthGoal || '').length > 100) {
-            Toast.show('健身目标最多100个字符');
+        if (!(medicalHistory || '').trim()) {
+            Toast.show('病史不能为空，可填写“无”');
             return;
         }
         if ((medicalHistory || '').length > 2000) {
@@ -185,7 +212,6 @@ const ProfilePage = {
             await apiClient.put('/user/profile', {
                 height: parsedHeight,
                 weight: parsedWeight,
-                healthGoal: healthGoal || '',
                 medicalHistory: medicalHistory || ''
             });
             Toast.show('保存成功');

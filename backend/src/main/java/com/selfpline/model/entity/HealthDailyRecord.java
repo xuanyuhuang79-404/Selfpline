@@ -20,6 +20,11 @@ public class HealthDailyRecord {
     private Integer caloriesIntake;
     private Integer caloriesBurned;
     private BigDecimal sleepHours;
+    private Integer steps;
+    private Integer exerciseMinutes;
+    private Integer moodLevel;
+    private Integer energyLevel;
+    private Integer stressLevel;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

@@ -18,9 +18,6 @@ public class UpdateProfileRequest {
     @DecimalMax(value = "300.0", message = "体重范围20-300kg")
     private BigDecimal weight;
 
-    @Size(max = 100, message = "健身目标最多100个字符")
-    private String healthGoal;
-
     @Size(max = 2000, message = "病史最多2000个字符")
     private String medicalHistory;
 }

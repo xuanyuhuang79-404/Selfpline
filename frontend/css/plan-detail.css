@@ -51,7 +51,7 @@
     min-width: 0;
     padding: clamp(20px, 2.6vw, 28px);
     border: 1px solid rgba(226, 229, 237, 0.88);
-    border-radius: 30px;
+    border-radius: 22px;
     background: rgba(255, 255, 255, 0.88);
     box-shadow: var(--shadow-soft);
     overflow: hidden;
@@ -250,7 +250,7 @@
 .ai-assist-chat {
     min-width: 0;
     border: 1px solid rgba(226, 229, 237, 0.88);
-    border-radius: 30px;
+    border-radius: 22px;
     background: rgba(255, 255, 255, 0.92);
     box-shadow: var(--shadow-soft);
     overflow: hidden;

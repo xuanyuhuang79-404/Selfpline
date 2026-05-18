@@ -40,6 +40,11 @@ public class RecordServiceImpl implements RecordService {
                 .caloriesIntake(healthRecord != null ? healthRecord.getCaloriesIntake() : null)
                 .caloriesBurned(healthRecord != null ? healthRecord.getCaloriesBurned() : null)
                 .sleepHours(healthRecord != null ? healthRecord.getSleepHours() : null)
+                .steps(healthRecord != null ? healthRecord.getSteps() : null)
+                .exerciseMinutes(healthRecord != null ? healthRecord.getExerciseMinutes() : null)
+                .moodLevel(healthRecord != null ? healthRecord.getMoodLevel() : null)
+                .energyLevel(healthRecord != null ? healthRecord.getEnergyLevel() : null)
+                .stressLevel(healthRecord != null ? healthRecord.getStressLevel() : null)
                 .diaryText(journal != null ? journal.getDiaryText() : "")
                 .healthRecordExists(healthRecord != null)
                 .journalExists(journal != null)
@@ -84,14 +89,27 @@ public class RecordServiceImpl implements RecordService {
         List<Object> weights = new ArrayList<>();
         List<Integer> caloriesIn = new ArrayList<>();
         List<Integer> caloriesOut = new ArrayList<>();
+        List<Integer> netCalories = new ArrayList<>();
         List<Object> sleepHours = new ArrayList<>();
+        List<Integer> steps = new ArrayList<>();
+        List<Integer> exerciseMinutes = new ArrayList<>();
+        List<Integer> moodLevels = new ArrayList<>();
+        List<Integer> energyLevels = new ArrayList<>();
+        List<Integer> stressLevels = new ArrayList<>();
 
         for (HealthDailyRecord record : records) {
             dates.add(record.getRecordDate() != null ? record.getRecordDate().toString() : "");
             weights.add(record.getCurrentWeight());
             caloriesIn.add(record.getCaloriesIntake() != null ? record.getCaloriesIntake() : 0);
             caloriesOut.add(record.getCaloriesBurned() != null ? record.getCaloriesBurned() : 0);
+            netCalories.add((record.getCaloriesIntake() != null ? record.getCaloriesIntake() : 0)
+                    - (record.getCaloriesBurned() != null ? record.getCaloriesBurned() : 0));
             sleepHours.add(record.getSleepHours());
+            steps.add(record.getSteps() != null ? record.getSteps() : 0);
+            exerciseMinutes.add(record.getExerciseMinutes() != null ? record.getExerciseMinutes() : 0);
+            moodLevels.add(record.getMoodLevel());
+            energyLevels.add(record.getEnergyLevel());
+            stressLevels.add(record.getStressLevel());
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -101,7 +119,13 @@ public class RecordServiceImpl implements RecordService {
         result.put("weights", weights);
         result.put("caloriesIn", caloriesIn);
         result.put("caloriesOut", caloriesOut);
+        result.put("netCalories", netCalories);
         result.put("sleepHours", sleepHours);
+        result.put("steps", steps);
+        result.put("exerciseMinutes", exerciseMinutes);
+        result.put("moodLevels", moodLevels);
+        result.put("energyLevels", energyLevels);
+        result.put("stressLevels", stressLevels);
         result.put("recordCount", records.size());
         result.put("latestWeight", records.stream()
                 .map(HealthDailyRecord::getCurrentWeight)
@@ -114,12 +138,37 @@ public class RecordServiceImpl implements RecordService {
                 .mapToDouble(value -> value.doubleValue())
                 .average()
                 .orElse(0));
+        result.put("avgSteps", Math.round(records.stream()
+                .map(HealthDailyRecord::getSteps)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0)));
+        result.put("avgMoodLevel", roundOneDecimal(records.stream()
+                .map(HealthDailyRecord::getMoodLevel)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0)));
+        result.put("avgEnergyLevel", roundOneDecimal(records.stream()
+                .map(HealthDailyRecord::getEnergyLevel)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0)));
+        result.put("avgStressLevel", roundOneDecimal(records.stream()
+                .map(HealthDailyRecord::getStressLevel)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0)));
         return result;
     }
 
     @Override
     public void saveTodayRecord(Long userId, DailyRecordRequest request) {
         DailyRecordRequest safeRequest = request != null ? request : new DailyRecordRequest();
+        validateRequiredState(safeRequest);
         LocalDate targetDate = LocalDate.now();
         upsertHealthRecord(userId, targetDate, safeRequest);
         upsertJournal(userId, targetDate, safeRequest.getDiaryText());
@@ -148,6 +197,11 @@ public class RecordServiceImpl implements RecordService {
         record.setCaloriesIntake(request.getCaloriesIntake());
         record.setCaloriesBurned(request.getCaloriesBurned());
         record.setSleepHours(request.getSleepHours());
+        record.setSteps(request.getSteps());
+        record.setExerciseMinutes(request.getExerciseMinutes());
+        record.setMoodLevel(request.getMoodLevel());
+        record.setEnergyLevel(request.getEnergyLevel());
+        record.setStressLevel(request.getStressLevel());
 
         if (record.getId() == null) {
             healthRecordMapper.insert(record);
@@ -197,10 +251,37 @@ public class RecordServiceImpl implements RecordService {
                 .caloriesIntake(healthRecord != null ? healthRecord.getCaloriesIntake() : null)
                 .caloriesBurned(healthRecord != null ? healthRecord.getCaloriesBurned() : null)
                 .sleepHours(healthRecord != null ? healthRecord.getSleepHours() : null)
+                .steps(healthRecord != null ? healthRecord.getSteps() : null)
+                .exerciseMinutes(healthRecord != null ? healthRecord.getExerciseMinutes() : null)
+                .moodLevel(healthRecord != null ? healthRecord.getMoodLevel() : null)
+                .energyLevel(healthRecord != null ? healthRecord.getEnergyLevel() : null)
+                .stressLevel(healthRecord != null ? healthRecord.getStressLevel() : null)
                 .diaryText(journal != null ? journal.getDiaryText() : "")
                 .healthRecordExists(healthRecord != null)
                 .journalExists(journal != null)
                 .build();
+    }
+
+    private void validateRequiredState(DailyRecordRequest request) {
+        if (request.getSteps() == null || request.getSteps() < 0 || request.getSteps() > 40000) {
+            throw new IllegalArgumentException("请填写 0-40000 范围内的步数");
+        }
+        if (request.getExerciseMinutes() == null || request.getExerciseMinutes() < 0 || request.getExerciseMinutes() > 300) {
+            throw new IllegalArgumentException("请选择 0-300 分钟内的锻炼时长");
+        }
+        validateScale("心情", request.getMoodLevel());
+        validateScale("精力", request.getEnergyLevel());
+        validateScale("压力", request.getStressLevel());
+    }
+
+    private void validateScale(String label, Integer value) {
+        if (value == null || value < 1 || value > 5) {
+            throw new IllegalArgumentException("请选择" + label + "状态");
+        }
+    }
+
+    private double roundOneDecimal(double value) {
+        return Math.round(value * 10.0) / 10.0;
     }
 
     private LocalDate[] normalizeRange(LocalDate startDate, LocalDate endDate, int defaultDays) {

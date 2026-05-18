@@ -5,13 +5,20 @@ const PageRouter = {
 
     navigate(pageName, params) {
         this.params = params || {};
-        window.location.hash = pageName;
+        const query = this.serializeParams(this.params);
+        const nextHash = query ? `${pageName}?${query}` : pageName;
+        if (window.location.hash.replace('#', '') === nextHash) {
+            this.route();
+            return;
+        }
+        window.location.hash = nextHash;
     },
 
     route() {
         const hash = window.location.hash.replace('#', '') || 'auth';
-        const pageName = hash.split('?')[0];
+        const [pageName, queryString = ''] = hash.split('?');
         this.currentPage = pageName;
+        this.params = queryString ? this.parseParams(queryString) : (this.params || {});
 
         const container = document.getElementById('page-container');
         if (!container) return;
@@ -65,6 +72,25 @@ const PageRouter = {
         return this.params || {};
     },
 
+    serializeParams(params = {}) {
+        const search = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && value !== '') {
+                search.set(key, String(value));
+            }
+        });
+        return search.toString();
+    },
+
+    parseParams(queryString = '') {
+        const params = {};
+        if (!queryString) return params;
+        new URLSearchParams(queryString).forEach((value, key) => {
+            params[key] = value;
+        });
+        return params;
+    },
+
     updateNavState(pageName) {
         const activeMap = {
             home: 'dashboard',
@@ -82,8 +108,8 @@ const PageRouter = {
     updateHeader(pageName) {
         const titles = {
             auth: ['Selfpline', '习惯管理 / AI 指导师'],
-            home: ['Dashboard', '总体概览与趋势'],
-            dashboard: ['Dashboard', '总体概览与趋势'],
+            home: ['Dashboard', '总览'],
+            dashboard: ['Dashboard', '总览'],
             today: ['Today', '今日执行与复盘'],
             plans: ['Plans', '计划管理、筛选与调整'],
             'create-plan': ['Create Plan', 'Build / Quit 下细化你的执行方案'],
@@ -91,10 +117,10 @@ const PageRouter = {
             'ai-coach': ['AI Coach', '身份切换与建议输入'],
             'ai-coach-chat': ['AI Coach', '身份切换与建议输入'],
             'plan-detail': ['计划详情', '记录、复盘与调整'],
-            health: ['Records', '身体记录、历史与趋势'],
-            records: ['Records', '身体记录、历史与趋势'],
+            health: ['Records', '记录'],
+            records: ['Records', '记录'],
             analytics: ['Analytics', '完成率、连续天数与健康趋势'],
-            community: ['Community', '分享执行现场'],
+            community: ['Community', '社区'],
             profile: ['Profile', '档案、通知与设置']
         };
         const [title, subtitle] = titles[pageName] || titles.dashboard;

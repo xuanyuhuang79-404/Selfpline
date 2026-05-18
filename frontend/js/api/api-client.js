@@ -260,6 +260,9 @@ const apiClient = {
                 handlers.onToken && handlers.onToken(payload);
                 break;
             case 'planReady':
+            case 'PLAN_READY':
+            case 'plan-ready':
+            case 'plan_ready':
                 handlers.onPlanReady && handlers.onPlanReady(payload);
                 break;
             case 'error':

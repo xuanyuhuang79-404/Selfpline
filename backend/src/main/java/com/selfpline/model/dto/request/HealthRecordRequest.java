@@ -17,6 +17,11 @@ public class HealthRecordRequest {
     private Integer caloriesIntake;
     private Integer caloriesBurned;
     private BigDecimal sleepHours;
+    private Integer steps;
+    private Integer exerciseMinutes;
+    private Integer moodLevel;
+    private Integer energyLevel;
+    private Integer stressLevel;
 
     private List<Long> completedPlanIds;
 }

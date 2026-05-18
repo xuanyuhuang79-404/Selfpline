@@ -15,30 +15,30 @@ const PlansPage = {
                     <div>
                         <p class="page-kicker">Plans</p>
                         <h1>管理所有计划</h1>
-                        <p>在这里筛选、搜索、编辑、归档和软删除计划。Today 只负责今天，Plans 负责长期管理。</p>
+                        <p>在这里筛选、搜索、编辑、结束和删除计划。Today 只负责今天，Plans 负责长期管理。</p>
                     </div>
                     <button class="btn btn-primary workspace-hero-action" type="button" onclick="PageRouter.navigate('create-plan')">创建计划</button>
                 </section>
 
                 <section class="workspace-card plans-toolbar">
                     <div class="plans-filter-grid">
-                        <label>
+                        <div class="plans-filter-group">
                             <span>方向</span>
-                            <select id="plans-filter-direction">
-                                <option value="">全部方向</option>
-                                <option value="1">Build</option>
-                                <option value="2">Quit</option>
-                            </select>
-                        </label>
-                        <label>
+                            <div class="plans-filter-segment" id="plans-filter-direction" role="group" aria-label="方向筛选">
+                                <button type="button" data-value="">全部</button>
+                                <button type="button" data-value="1">Build</button>
+                                <button type="button" data-value="2">Quit</button>
+                            </div>
+                        </div>
+                        <div class="plans-filter-group">
                             <span>状态</span>
-                            <select id="plans-filter-status">
-                                <option value="">全部可见</option>
-                                <option value="1">执行中</option>
-                                <option value="2">已完成</option>
-                                <option value="3">已归档</option>
-                            </select>
-                        </label>
+                            <div class="plans-filter-segment" id="plans-filter-status" role="group" aria-label="状态筛选">
+                                <button type="button" data-value="">全部</button>
+                                <button type="button" data-value="1">执行中</button>
+                                <button type="button" data-value="2">已完成</button>
+                                <button type="button" data-value="3">已结束</button>
+                            </div>
+                        </div>
                         <label class="plans-search-label">
                             <span>关键词</span>
                             <input id="plans-filter-keyword" type="search" maxlength="60" placeholder="搜索目标或短名">
@@ -65,17 +65,26 @@ const PlansPage = {
     },
 
     bindFilters() {
-        const direction = document.getElementById('plans-filter-direction');
-        const status = document.getElementById('plans-filter-status');
         const keyword = document.getElementById('plans-filter-keyword');
-        if (direction) direction.value = this.filters.direction;
-        if (status) status.value = this.filters.status;
         if (keyword) keyword.value = this.filters.keyword;
+        this.syncSegment('plans-filter-direction', this.filters.direction);
+        this.syncSegment('plans-filter-status', this.filters.status);
+
+        document.querySelectorAll('#plans-filter-direction [data-value], #plans-filter-status [data-value]').forEach(button => {
+            button.addEventListener('click', () => {
+                const group = button.closest('.plans-filter-segment');
+                if (!group) return;
+                const key = group.id === 'plans-filter-direction' ? 'direction' : 'status';
+                this.filters[key] = button.dataset.value || '';
+                this.syncSegment(group.id, this.filters[key]);
+                this.loadPlans();
+            });
+        });
 
         document.getElementById('plans-filter-submit')?.addEventListener('click', () => {
             this.filters = {
-                direction: direction?.value || '',
-                status: status?.value || '',
+                direction: this.filters.direction || '',
+                status: this.filters.status || '',
                 keyword: keyword?.value?.trim() || ''
             };
             this.loadPlans();
@@ -85,6 +94,12 @@ const PlansPage = {
                 event.preventDefault();
                 document.getElementById('plans-filter-submit')?.click();
             }
+        });
+    },
+
+    syncSegment(id, value) {
+        document.querySelectorAll(`#${id} [data-value]`).forEach(button => {
+            button.classList.toggle('active', (button.dataset.value || '') === (value || ''));
         });
     },
 
@@ -167,7 +182,7 @@ const PlansPage = {
         if (Number(plan.status) === 3) {
             return `<button type="button" class="workspace-link-btn" onclick="PlansPage.restorePlan(${plan.planId})" ${isPending ? 'disabled' : ''}>恢复</button>`;
         }
-        return `<button type="button" class="workspace-link-btn" onclick="PlansPage.archivePlan(${plan.planId})" ${isPending ? 'disabled' : ''}>归档</button>`;
+        return `<button type="button" class="workspace-link-btn" onclick="PlansPage.archivePlan(${plan.planId})" ${isPending ? 'disabled' : ''}>结束</button>`;
     },
 
     openEdit(planId) {
@@ -204,7 +219,7 @@ const PlansPage = {
                             <select id="edit-status">
                                 <option value="1" ${Number(plan.status) === 1 ? 'selected' : ''}>执行中</option>
                                 <option value="2" ${Number(plan.status) === 2 ? 'selected' : ''}>已完成</option>
-                                <option value="3" ${Number(plan.status) === 3 ? 'selected' : ''}>已归档</option>
+                                <option value="3" ${Number(plan.status) === 3 ? 'selected' : ''}>已结束</option>
                             </select>
                         </label>
                         <label>
@@ -274,8 +289,8 @@ const PlansPage = {
     },
 
     async archivePlan(planId) {
-        if (!confirm('确定归档这个计划吗？归档后不会出现在 Today。')) return;
-        await this.runPlanAction(planId, `/plan/${planId}/archive`, '计划已归档');
+        if (!confirm('确定结束这个计划吗？结束后不会出现在 Today。')) return;
+        await this.runPlanAction(planId, `/plan/${planId}/archive`, '计划已结束');
     },
 
     async restorePlan(planId) {
@@ -283,7 +298,7 @@ const PlansPage = {
     },
 
     async deletePlan(planId) {
-        if (!confirm('确定删除这个计划吗？系统会软删除计划，历史日志不会被物理删除。')) return;
+        if (!confirm('确定删除这个计划吗？系统会彻底删除计划，并清理对应每日执行记录。')) return;
         await this.runPlanAction(planId, `/plan/${planId}`, '计划已删除', 'DELETE');
     },
 
@@ -312,7 +327,7 @@ const PlansPage = {
             0: { label: '已删除', className: 'deleted' },
             1: { label: '执行中', className: 'active' },
             2: { label: '已完成', className: 'completed' },
-            3: { label: '已归档', className: 'archived' }
+            3: { label: '已结束', className: 'archived' }
         };
         return map[Number(statusCode)] || map[1];
     },

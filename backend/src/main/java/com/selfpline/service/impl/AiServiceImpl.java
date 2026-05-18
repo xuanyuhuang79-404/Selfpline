@@ -75,7 +75,7 @@ public class AiServiceImpl implements AiService {
     private final Map<String, PlanSessionData> localPlanSessions = new ConcurrentHashMap<>();
 
     private static final Pattern PLAN_READY_PATTERN =
-            Pattern.compile("\\[PLAN_READY\\]\\s*(\\{[\\s\\S]*?\\})\\s*\\[/PLAN_READY\\]");
+            Pattern.compile("\\[PLAN_READY\\]\\s*([\\s\\S]*?)\\s*\\[/PLAN_READY\\]");
 
     private static final String DEFAULT_BUILD_SCENE = "build_exercise_habit";
     private static final String DEFAULT_QUIT_SCENE = "quit_stay_up_late";

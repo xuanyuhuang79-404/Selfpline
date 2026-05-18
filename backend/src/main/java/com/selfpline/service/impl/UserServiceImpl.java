@@ -1,6 +1,7 @@
 package com.selfpline.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.selfpline.dao.HealthDailyRecordMapper;
 import com.selfpline.dao.SysNotificationMapper;
 import com.selfpline.dao.SysUserMapper;
 import com.selfpline.model.dto.request.LoginRequest;
@@ -9,6 +10,7 @@ import com.selfpline.model.dto.request.UpdateProfileRequest;
 import com.selfpline.model.dto.response.LoginResponse;
 import com.selfpline.model.entity.SysNotification;
 import com.selfpline.model.entity.SysUser;
+import com.selfpline.model.entity.HealthDailyRecord;
 import com.selfpline.service.UserService;
 import com.selfpline.config.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final SysUserMapper userMapper;
+    private final HealthDailyRecordMapper healthRecordMapper;
     private final SysNotificationMapper notificationMapper;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
@@ -38,7 +41,6 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setHeight(request.getHeight());
         user.setWeight(request.getWeight());
-        user.setHealthGoal(request.getHealthGoal());
         user.setMedicalHistory(request.getMedicalHistory());
 
         userMapper.insert(user);
@@ -61,7 +63,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public SysUser getById(Long userId) {
-        return userMapper.selectById(userId);
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            return null;
+        }
+        HealthDailyRecord latestWeightRecord = healthRecordMapper.findLatestWithWeightByUserId(userId);
+        if (latestWeightRecord != null && latestWeightRecord.getCurrentWeight() != null) {
+            user.setWeight(latestWeightRecord.getCurrentWeight());
+        }
+        return user;
     }
 
     @Override
@@ -73,7 +83,6 @@ public class UserServiceImpl implements UserService {
 
         user.setHeight(request.getHeight());
         user.setWeight(request.getWeight());
-        user.setHealthGoal(request.getHealthGoal());
         user.setMedicalHistory(request.getMedicalHistory());
 
         userMapper.updateById(user);

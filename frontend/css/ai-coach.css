@@ -9,7 +9,7 @@
 .ai-coach-identities,
 .ai-coach-chat-panel {
     border: 1px solid rgba(226, 229, 237, 0.88);
-    border-radius: 30px;
+    border-radius: 22px;
     background: rgba(255, 255, 255, 0.9);
     box-shadow: var(--shadow-soft);
 }

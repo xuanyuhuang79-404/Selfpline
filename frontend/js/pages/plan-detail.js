@@ -129,7 +129,7 @@ const PlanDetailPage = {
         const dirLabel = p.planDirection === 1 ? 'Build · 养成' : 'Quit · 戒除';
         const dirColor = p.planDirection === 1 ? 'var(--color-build)' : 'var(--color-quit)';
         const dirBg = p.planDirection === 1 ? 'var(--color-build-soft)' : 'var(--color-quit-soft)';
-        const completionRate = Number.isFinite(Number(p.completionRate)) ? Number(p.completionRate) : 0;
+        const completionRate = Number.isFinite(Number(p.completionRate)) ? Math.min(100, Math.max(0, Number(p.completionRate))) : 0;
         const shortName = p.shortName || p.targetName || '未命名计划';
 
         document.getElementById('plan-detail-content').innerHTML = `
@@ -143,7 +143,7 @@ const PlanDetailPage = {
                     <div class="plan-name">${this.escapeHtml(shortName)}</div>
                     ${p.targetName && p.targetName !== shortName ? `<div class="plan-full-name">${this.escapeHtml(p.targetName)}</div>` : ''}
                     <span class="streak-badge" style="background:${dirBg};color:${dirColor}">${dirLabel}</span>
-                    <div class="plan-meta">🔥 连续 <strong>${p.streakDays || 0}</strong> 天 · 完成率 <strong>${(completionRate * 100).toFixed(0)}%</strong></div>
+                    <div class="plan-meta">🔥 连续 <strong>${p.streakDays || 0}</strong> 天 · 完成率 <strong>${completionRate.toFixed(0)}%</strong></div>
                 </section>
 
                 <section class="daily-record-section">

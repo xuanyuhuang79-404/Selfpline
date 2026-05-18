@@ -11,7 +11,7 @@
     min-width: 0;
     padding: clamp(24px, 4vw, 36px);
     border: 1px solid rgba(226, 229, 237, 0.72);
-    border-radius: 32px;
+    border-radius: 24px;
     background:
         linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92)),
         radial-gradient(circle at top right, rgba(139, 234, 60, 0.18), transparent 34%);
@@ -42,7 +42,7 @@
     min-width: 0;
     padding: clamp(16px, 2vw, 20px);
     border: 1px solid color-mix(in srgb, var(--metric-accent) 20%, #e5e7eb);
-    border-radius: 26px;
+    border-radius: 22px;
     background:
         linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.86)),
         color-mix(in srgb, var(--metric-accent) 7%, #fff);
@@ -73,6 +73,17 @@
     color: var(--color-text);
     font-size: 15px;
     font-weight: 850;
+}
+
+.metric-title em {
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 900;
 }
 
 .metric-main-value {
@@ -117,6 +128,30 @@
     overflow-wrap: anywhere;
 }
 
+.metric-number-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.metric-number-row span {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.metric-number-input {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid color-mix(in srgb, var(--metric-accent) 22%, #e5e7eb);
+    border-radius: 16px;
+    background: #fff;
+    color: var(--color-text);
+}
+
 .metric-stepper-btn {
     width: 42px;
     height: 42px;
@@ -147,48 +182,121 @@
     transform: scale(0.96);
 }
 
+.record-state-card,
 .journal-card {
     min-width: 0;
     padding: clamp(18px, 2.4vw, 24px);
     border: 1px solid rgba(226, 229, 237, 0.84);
-    border-radius: 28px;
+    border-radius: 22px;
     background:
         radial-gradient(circle at top right, rgba(46, 167, 223, 0.12), transparent 32%),
         rgba(255, 255, 255, 0.92);
     box-shadow: var(--shadow-soft);
 }
 
-.record-trends-card,
+.record-state-card {
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.record-state-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.record-state-group {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid color-mix(in srgb, var(--state-accent) 20%, #e5e7eb);
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--state-accent) 7%, #fff);
+}
+
+.state-option-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.state-option {
+    min-width: 0;
+    min-height: 78px;
+    padding: 8px 6px;
+    display: grid;
+    place-items: center;
+    gap: 5px;
+    border: 1px solid rgba(226, 229, 237, 0.9);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.76);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition), background var(--transition), box-shadow var(--transition);
+}
+
+.state-option:hover,
+.state-option:focus-visible {
+    outline: none;
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--state-accent) 36%, #e5e7eb);
+    background: #fff;
+}
+
+.state-option.selected {
+    border-color: color-mix(in srgb, var(--state-accent) 52%, #fff);
+    background: color-mix(in srgb, var(--state-accent) 16%, #fff);
+    color: var(--color-text);
+    box-shadow: 0 10px 22px rgba(31, 41, 55, 0.07);
+}
+
+.state-emoji-tile {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: inset 0 0 0 1px rgba(226, 229, 237, 0.86);
+    font-size: 17px;
+}
+
+.state-option strong {
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 900;
+    text-align: center;
+}
+
 .record-history-card {
     min-width: 0;
     padding: clamp(18px, 2.4vw, 24px);
     border: 1px solid rgba(226, 229, 237, 0.84);
-    border-radius: 28px;
+    border-radius: 22px;
     background: rgba(255, 255, 255, 0.92);
     box-shadow: var(--shadow-soft);
 }
 
-.record-range-row {
+.record-date-inspector {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 220px)) auto;
+    grid-template-columns: minmax(0, 240px) auto;
     gap: 12px;
     align-items: end;
     margin-bottom: 14px;
 }
 
-.record-range-row label {
+.record-date-inspector label {
     min-width: 0;
     display: grid;
     gap: 6px;
 }
 
-.record-range-row label span {
+.record-date-inspector label span {
     color: var(--color-text-secondary);
     font-size: 12px;
     font-weight: 850;
 }
 
-.record-range-row input {
+.record-date-inspector input {
     min-height: 42px;
     padding: 9px 12px;
     border: 1px solid var(--color-border);
@@ -196,8 +304,84 @@
     background: #fff;
 }
 
-.record-chart-grid {
-    margin-bottom: 14px;
+.record-selected-detail {
+    margin-bottom: 16px;
+}
+
+.record-detail-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid rgba(226, 229, 237, 0.88);
+    border-radius: 22px;
+    background: var(--color-surface);
+}
+
+.record-detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.record-detail-head strong {
+    color: var(--color-text);
+    font-size: 18px;
+    font-weight: 950;
+}
+
+.record-detail-head span {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.record-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.record-detail-metric {
+    min-width: 0;
+    padding: 12px;
+    border-radius: 18px;
+    background: #fff;
+}
+
+.record-detail-metric span {
+    display: block;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 850;
+}
+
+.record-detail-metric strong {
+    display: block;
+    margin-top: 5px;
+    color: var(--color-text);
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 950;
+    overflow-wrap: anywhere;
+}
+
+.record-detail-metric small {
+    margin-left: 2px;
+    color: var(--color-text-muted);
+    font-size: 11px;
+}
+
+.record-detail-note {
+    padding: 12px;
+    border-radius: 18px;
+    background: #fff;
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    overflow-wrap: anywhere;
 }
 
 .record-history-list {
@@ -207,6 +391,7 @@
 
 .record-history-item {
     min-width: 0;
+    width: 100%;
     padding: 14px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -215,6 +400,17 @@
     border: 1px solid var(--color-border);
     border-radius: 22px;
     background: var(--color-surface);
+    text-align: left;
+    cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.record-history-item:hover,
+.record-history-item:focus-visible {
+    outline: none;
+    transform: translateY(-1px);
+    border-color: rgba(255, 122, 61, 0.32);
+    background: #fff;
 }
 
 .record-history-item strong,
@@ -319,22 +515,20 @@
     overflow-wrap: anywhere;
 }
 
-.record-page.record-submitted .record-metric-card,
-.record-page.record-submitted .journal-card {
-    border-color: rgba(203, 213, 225, 0.88);
-    background: rgba(248, 250, 252, 0.82);
-    box-shadow: none;
+.record-form-error {
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(233, 52, 11, 0.22);
+    border-radius: 18px;
+    background: var(--color-quit-soft);
+    color: var(--color-quit);
+    font-size: 14px;
+    font-weight: 850;
 }
 
-.record-page.record-submitted .metric-slider,
-.record-page.record-submitted .metric-stepper-btn,
-.record-page.record-submitted .journal-textarea {
-    cursor: not-allowed;
-}
-
-.record-page.record-submitted .journal-textarea {
-    background: rgba(241, 245, 249, 0.88);
-    color: var(--color-text-secondary);
+.record-page.record-submitted .record-submitted-card {
+    border-color: rgba(55, 201, 120, 0.22);
+    background: linear-gradient(135deg, rgba(237, 248, 231, 0.94), rgba(255, 255, 255, 0.9));
 }
 
 .record-actions {
@@ -387,6 +581,10 @@
         grid-template-columns: 1fr;
     }
 
+    .record-state-grid {
+        grid-template-columns: 1fr;
+    }
+
     .journal-heading,
     .record-actions {
         align-items: stretch;
@@ -401,7 +599,8 @@
         width: 100%;
     }
 
-    .record-range-row,
+    .record-date-inspector,
+    .record-detail-grid,
     .record-history-item {
         grid-template-columns: 1fr;
     }
@@ -420,5 +619,9 @@
     .metric-stepper-btn {
         width: 40px;
         height: 40px;
+    }
+
+    .state-option-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }

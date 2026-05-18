@@ -187,7 +187,11 @@ public class PlanServiceImpl implements PlanService {
 
     @Override
     public void deletePlan(Long planId, Long userId) {
-        updateStatus(planId, userId, PlanStatus.ABANDONED.getCode());
+        AiCustomPlan plan = getOwnedPlan(planId, userId);
+        dailyLogMapper.delete(new LambdaQueryWrapper<PlanDailyLog>()
+                .eq(PlanDailyLog::getPlanId, plan.getId())
+                .eq(PlanDailyLog::getUserId, userId));
+        planMapper.deleteById(plan.getId());
     }
 
     @Override
@@ -433,9 +437,10 @@ public class PlanServiceImpl implements PlanService {
             return 0.0;
         }
 
-        double percent = (double) completedDays / totalDays * 100.0;
+        int safeCompletedDays = (int) Math.min(completedDays, totalDays);
+        double percent = (double) safeCompletedDays / totalDays * 100.0;
         // round to 2 decimal places
-        return Math.round(percent * 100.0) / 100.0;
+        return Math.min(100.0, Math.round(percent * 100.0) / 100.0);
     }
 
     private String resolveShortName(Object shortName, String targetName) {

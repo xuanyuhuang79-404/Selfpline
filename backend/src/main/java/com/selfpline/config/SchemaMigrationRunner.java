@@ -17,6 +17,7 @@ public class SchemaMigrationRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         ensureAiCustomPlanShortName();
+        ensureHealthDailyRecordStateFields();
         ensureCommunityTables();
     }
 
@@ -34,6 +35,38 @@ public class SchemaMigrationRunner implements ApplicationRunner {
                 AFTER target_name
                 """);
         log.info("Schema migration applied: ai_custom_plan.short_name");
+    }
+
+    private void ensureHealthDailyRecordStateFields() {
+        if (!tableExists("health_daily_record")) {
+            log.warn("Skip schema migration: table health_daily_record does not exist");
+            return;
+        }
+        addColumnIfMissing("health_daily_record", "steps", """
+                ALTER TABLE health_daily_record
+                ADD COLUMN steps INT NULL COMMENT '步数'
+                AFTER sleep_hours
+                """);
+        addColumnIfMissing("health_daily_record", "exercise_minutes", """
+                ALTER TABLE health_daily_record
+                ADD COLUMN exercise_minutes INT NULL COMMENT '锻炼时长(分钟)'
+                AFTER steps
+                """);
+        addColumnIfMissing("health_daily_record", "mood_level", """
+                ALTER TABLE health_daily_record
+                ADD COLUMN mood_level TINYINT NULL COMMENT '心情状态 1-5'
+                AFTER exercise_minutes
+                """);
+        addColumnIfMissing("health_daily_record", "energy_level", """
+                ALTER TABLE health_daily_record
+                ADD COLUMN energy_level TINYINT NULL COMMENT '精力状态 1-5'
+                AFTER mood_level
+                """);
+        addColumnIfMissing("health_daily_record", "stress_level", """
+                ALTER TABLE health_daily_record
+                ADD COLUMN stress_level TINYINT NULL COMMENT '压力状态 1-5'
+                AFTER energy_level
+                """);
     }
 
     private void ensureCommunityTables() {
@@ -100,5 +133,13 @@ public class SchemaMigrationRunner implements ApplicationRunner {
                   AND COLUMN_NAME = ?
                 """, Integer.class, tableName, columnName);
         return count != null && count > 0;
+    }
+
+    private void addColumnIfMissing(String tableName, String columnName, String sql) {
+        if (columnExists(tableName, columnName)) {
+            return;
+        }
+        jdbcTemplate.execute(sql);
+        log.info("Schema migration applied: {}.{}", tableName, columnName);
     }
 }

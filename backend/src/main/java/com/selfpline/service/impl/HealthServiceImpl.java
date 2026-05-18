@@ -38,6 +38,11 @@ public class HealthServiceImpl implements HealthService {
             existing.setCaloriesIntake(request.getCaloriesIntake());
             existing.setCaloriesBurned(request.getCaloriesBurned());
             existing.setSleepHours(request.getSleepHours());
+            existing.setSteps(request.getSteps());
+            existing.setExerciseMinutes(request.getExerciseMinutes());
+            existing.setMoodLevel(request.getMoodLevel());
+            existing.setEnergyLevel(request.getEnergyLevel());
+            existing.setStressLevel(request.getStressLevel());
             healthRecordMapper.updateById(existing);
             record = existing;
         } else {
@@ -48,6 +53,11 @@ public class HealthServiceImpl implements HealthService {
             record.setCaloriesIntake(request.getCaloriesIntake());
             record.setCaloriesBurned(request.getCaloriesBurned());
             record.setSleepHours(request.getSleepHours());
+            record.setSteps(request.getSteps());
+            record.setExerciseMinutes(request.getExerciseMinutes());
+            record.setMoodLevel(request.getMoodLevel());
+            record.setEnergyLevel(request.getEnergyLevel());
+            record.setStressLevel(request.getStressLevel());
             healthRecordMapper.insert(record);
         }
 
@@ -62,14 +72,27 @@ public class HealthServiceImpl implements HealthService {
         List<BigDecimal> weights = new ArrayList<>();
         List<Integer> caloriesIn = new ArrayList<>();
         List<Integer> caloriesOut = new ArrayList<>();
+        List<Integer> netCalories = new ArrayList<>();
         List<BigDecimal> sleepHours = new ArrayList<>();
+        List<Integer> steps = new ArrayList<>();
+        List<Integer> exerciseMinutes = new ArrayList<>();
+        List<Integer> moodLevels = new ArrayList<>();
+        List<Integer> energyLevels = new ArrayList<>();
+        List<Integer> stressLevels = new ArrayList<>();
 
         for (HealthDailyRecord record : records) {
             dates.add(record.getRecordDate().toString());
             weights.add(record.getCurrentWeight());
             caloriesIn.add(record.getCaloriesIntake() != null ? record.getCaloriesIntake() : 0);
             caloriesOut.add(record.getCaloriesBurned() != null ? record.getCaloriesBurned() : 0);
+            netCalories.add((record.getCaloriesIntake() != null ? record.getCaloriesIntake() : 0)
+                    - (record.getCaloriesBurned() != null ? record.getCaloriesBurned() : 0));
             sleepHours.add(record.getSleepHours());
+            steps.add(record.getSteps() != null ? record.getSteps() : 0);
+            exerciseMinutes.add(record.getExerciseMinutes() != null ? record.getExerciseMinutes() : 0);
+            moodLevels.add(record.getMoodLevel());
+            energyLevels.add(record.getEnergyLevel());
+            stressLevels.add(record.getStressLevel());
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -77,7 +100,13 @@ public class HealthServiceImpl implements HealthService {
         result.put("weights", weights);
         result.put("caloriesIn", caloriesIn);
         result.put("caloriesOut", caloriesOut);
+        result.put("netCalories", netCalories);
         result.put("sleepHours", sleepHours);
+        result.put("steps", steps);
+        result.put("exerciseMinutes", exerciseMinutes);
+        result.put("moodLevels", moodLevels);
+        result.put("energyLevels", energyLevels);
+        result.put("stressLevels", stressLevels);
 
         return result;
     }

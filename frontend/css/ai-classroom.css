@@ -15,7 +15,7 @@
     min-width: 0;
     padding: 20px 24px;
     border: 1px solid rgba(226, 229, 237, 0.88);
-    border-radius: 30px;
+    border-radius: 22px;
     background:
         radial-gradient(circle at top right, rgba(237, 50, 210, 0.14), transparent 34%),
         #fff;
@@ -56,7 +56,7 @@
 .chat-area {
     min-width: 0;
     border: 1px solid rgba(226, 229, 237, 0.88);
-    border-radius: 30px;
+    border-radius: 22px;
     background: rgba(255, 255, 255, 0.88);
     box-shadow: var(--shadow-soft);
 }
@@ -93,6 +93,45 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
     gap: 12px;
     padding: 0;
+}
+
+.create-direction-segment {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 5px;
+    border: 1px solid var(--color-border);
+    border-radius: 22px;
+    background: var(--color-surface);
+}
+
+.create-direction-segment button {
+    min-width: 0;
+    padding: 10px 12px;
+    display: grid;
+    gap: 2px;
+    border: none;
+    border-radius: 18px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    text-align: left;
+}
+
+.create-direction-segment button.active {
+    background: #fff;
+    color: var(--color-text);
+    box-shadow: var(--shadow-soft);
+}
+
+.create-direction-segment strong {
+    font-size: 14px;
+    font-weight: 950;
+}
+
+.create-direction-segment span {
+    font-size: 12px;
 }
 
 .scenario-chip {
@@ -242,6 +281,58 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.plan-generation-status {
+    margin: 0 14px 12px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid rgba(226, 229, 237, 0.9);
+    border-radius: 18px;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+}
+
+.plan-generation-status .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+}
+
+.plan-generation-status.generating .status-dot,
+.plan-generation-status.analyzing .status-dot {
+    background: var(--color-primary);
+    box-shadow: 0 0 0 5px rgba(255, 122, 61, 0.12);
+}
+
+.plan-generation-status.ready .status-dot {
+    background: var(--color-build);
+    box-shadow: 0 0 0 5px rgba(55, 201, 120, 0.12);
+}
+
+.plan-generation-status.failed .status-dot {
+    background: var(--color-quit);
+    box-shadow: 0 0 0 5px rgba(233, 52, 11, 0.12);
+}
+
+.plan-generation-status strong,
+.plan-generation-status small {
+    display: block;
+}
+
+.plan-generation-status strong {
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.plan-generation-status small {
+    font-size: 12px;
+    overflow-wrap: anywhere;
 }
 
 .chat-message {

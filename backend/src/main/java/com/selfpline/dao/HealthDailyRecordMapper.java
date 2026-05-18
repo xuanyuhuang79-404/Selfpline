@@ -16,4 +16,7 @@ public interface HealthDailyRecordMapper extends BaseMapper<HealthDailyRecord> {
     List<HealthDailyRecord> findByUserIdAndDateRange(@Param("userId") Long userId,
                                                       @Param("startDate") LocalDate startDate,
                                                       @Param("endDate") LocalDate endDate);
+
+    @Select("SELECT * FROM health_daily_record WHERE user_id = #{userId} AND current_weight IS NOT NULL ORDER BY record_date DESC LIMIT 1")
+    HealthDailyRecord findLatestWithWeightByUserId(@Param("userId") Long userId);
 }

@@ -9,6 +9,8 @@ const AiClassroom = {
     planSummary: null,
     isSending: false,
     currentAssistantBubbleId: null,
+    generationStatus: 'idle',
+    lastUserMessage: '',
 
     async render(params = {}) {
         this.direction = params.direction || 'BUILD';
@@ -19,6 +21,8 @@ const AiClassroom = {
         this.selectedTargetName = params.targetName || '';
         this.isSending = false;
         this.currentAssistantBubbleId = null;
+        this.generationStatus = 'idle';
+        this.lastUserMessage = '';
 
         document.getElementById('top-nav').classList.remove('hidden');
         document.getElementById('bottom-nav').classList.remove('hidden');
@@ -39,8 +43,18 @@ const AiClassroom = {
 
                 <section class="plan-target-panel">
                     <div class="target-panel-heading">
-                        <h2>计划类型</h2>
+                        <h2>计划类型与场景</h2>
                         <span id="classroom-direction-label">${dirLabel}</span>
+                    </div>
+                    <div class="create-direction-segment" role="group" aria-label="计划方向">
+                        <button type="button" data-direction="BUILD" class="${this.direction === 'BUILD' ? 'active' : ''}" onclick="AiClassroom.selectDirection('BUILD')">
+                            <strong>Build</strong>
+                            <span>建立好习惯</span>
+                        </button>
+                        <button type="button" data-direction="QUIT" class="${this.direction === 'QUIT' ? 'active' : ''}" onclick="AiClassroom.selectDirection('QUIT')">
+                            <strong>Quit</strong>
+                            <span>戒除坏习惯</span>
+                        </button>
                     </div>
                     <div class="scenario-selector" id="scenario-selector"></div>
                 </section>
@@ -52,6 +66,7 @@ const AiClassroom = {
 
                 <div class="chat-area">
                     <div class="chat-messages" id="classroom-chat"></div>
+                    <div class="plan-generation-status" id="plan-generation-status"></div>
                     <div class="chat-input-row">
                         <input id="classroom-input" placeholder="描述目标，也可以说：直接生成计划">
                         <button id="classroom-send-btn">发送</button>
@@ -84,7 +99,7 @@ const AiClassroom = {
             this.scenarios = planScenes.length ? planScenes : this.getFallbackScenarios();
         } catch (e) {
             Toast.show('AI 场景加载失败，已使用本地配置');
-            this.scenarios = this.getFallbackScenarios();
+        this.scenarios = this.getFallbackScenarios();
         }
 
         const directionScenes = this.getDirectionScenes(this.direction);
@@ -96,6 +111,7 @@ const AiClassroom = {
         this.selectedTargetName = selected?.sceneName || this.selectedTargetName;
         this.renderScenarios();
         this.updateDirectionMeta();
+        this.updateGenerationStatus('idle');
     },
 
     getDirectionScenes(direction) {
@@ -166,6 +182,21 @@ const AiClassroom = {
         this.initChat();
     },
 
+    selectDirection(direction) {
+        if (this.sessionId) {
+            Toast.show('当前计划会话已开始，下次创建计划时生效');
+            return;
+        }
+        this.direction = direction === 'QUIT' ? 'QUIT' : 'BUILD';
+        const directionScenes = this.getDirectionScenes(this.direction);
+        this.selectedSceneKey = directionScenes[0]?.sceneKey || this.selectedSceneKey;
+        const selected = this.scenarios.find(item => item.sceneKey === this.selectedSceneKey);
+        this.selectedTargetName = selected?.sceneName || '';
+        this.renderScenarios();
+        this.updateDirectionMeta();
+        this.initChat();
+    },
+
     updateDirectionMeta() {
         const directionLabel = document.getElementById('classroom-direction-label');
         const badge = document.getElementById('plan-direction-badge');
@@ -177,6 +208,9 @@ const AiClassroom = {
             badge.className = `plan-direction-badge ${isQuit ? 'quit' : 'build'}`;
             badge.textContent = isQuit ? '戒除坏习惯' : '建立好习惯';
         }
+        document.querySelectorAll('.create-direction-segment [data-direction]').forEach(button => {
+            button.classList.toggle('active', button.dataset.direction === this.direction);
+        });
     },
 
     initChat() {
@@ -185,6 +219,7 @@ const AiClassroom = {
         chat.innerHTML = '';
         const sceneName = this.selectedTargetName || this.getSelectedSceneName();
         this.appendMessage('system', `已选择「${sceneName}」。描述目标即可；想快速开始时，可以直接说“直接生成计划”。`);
+        this.updateGenerationStatus('idle');
     },
 
     async sendMessage() {
@@ -195,6 +230,7 @@ const AiClassroom = {
         if (!message) return;
 
         this.appendMessage('user', message);
+        this.lastUserMessage = message;
         input.value = '';
         this.isSending = true;
         if (sendBtn) sendBtn.disabled = true;
@@ -203,12 +239,15 @@ const AiClassroom = {
 
         try {
             if (!this.sessionId) {
+                this.updateGenerationStatus('analyzing');
                 await this.startPlanSession(message);
             } else {
+                this.updateGenerationStatus('generating');
                 await this.continuePlanSession(message);
             }
         } catch (e) {
             this.hideTyping();
+            this.updateGenerationStatus('failed', e.message);
             this.appendMessage('system', `发送失败：${e.message}`);
             Toast.show(`发送失败：${e.message}`);
         } finally {
@@ -230,6 +269,7 @@ const AiClassroom = {
         }, {
             onMeta(data) {
                 if (data.sessionId) self.sessionId = data.sessionId;
+                self.updateGenerationStatus('generating');
             },
             onToken(data) {
                 const text = data.content || '';
@@ -241,24 +281,30 @@ const AiClassroom = {
                 self.planReady = true;
                 self.showPlanSummary(data.planSummary || {});
                 document.getElementById('plan-confirm-bar')?.classList.remove('hidden');
+                self.updateGenerationStatus('ready');
                 self.appendMessage('system', '计划已生成，可点击下方按钮确认并开始执行。');
             },
             onDone() {
                 self.hideTyping();
                 self.updateCurrentAiBubble(fullResponse, true);
-                if (!fullResponse.trim()) {
-                    self.appendMessage('system', 'AI 暂无回复，请补充你的目标细节后再试。');
+                if (!fullResponse.trim() && !self.planReady) {
+                    self.appendMessage('system', 'AI 暂无回复，请再描述目标细节后重试。');
+                }
+                if (!self.planReady) {
+                    self.updateGenerationStatus('idle');
                 }
                 self.currentAssistantBubbleId = null;
             },
             onError(data) {
                 self.hideTyping();
+                self.updateGenerationStatus('failed', data.message || '未知错误');
                 self.appendMessage('system', '发送失败：' + (data.message || '未知错误'));
                 Toast.show('发送失败：' + (data.message || '未知错误'));
             }
         });
 
         if (!this.sessionId) {
+            this.updateGenerationStatus('failed', 'AI 初始化响应异常，请重试。');
             this.appendMessage('system', 'AI 初始化响应异常');
         }
     },
@@ -282,22 +328,77 @@ const AiClassroom = {
                 self.planReady = true;
                 self.showPlanSummary(data.planSummary || {});
                 document.getElementById('plan-confirm-bar')?.classList.remove('hidden');
+                self.updateGenerationStatus('ready');
                 self.appendMessage('system', '计划已生成，可点击下方按钮确认并开始执行。');
             },
             onDone() {
                 self.hideTyping();
                 self.updateCurrentAiBubble(fullResponse, true);
-                if (!fullResponse.trim()) {
+                if (!fullResponse.trim() && !self.planReady) {
                     self.appendMessage('system', 'AI 暂无回复，请稍后重试');
+                }
+                if (!self.planReady) {
+                    self.updateGenerationStatus('idle');
                 }
                 self.currentAssistantBubbleId = null;
             },
             onError(data) {
                 self.hideTyping();
+                self.updateGenerationStatus('failed', data.message || '未知错误');
                 self.appendMessage('system', '发送失败：' + (data.message || '未知错误'));
                 Toast.show('发送失败：' + (data.message || '未知错误'));
             }
         });
+    },
+
+    retryLastMessage() {
+        if (!this.lastUserMessage || this.isSending) return;
+        const input = document.getElementById('classroom-input');
+        if (input) input.value = this.lastUserMessage;
+        this.sendMessage();
+    },
+
+    updateGenerationStatus(status, message = '') {
+        this.generationStatus = status || 'idle';
+        const el = document.getElementById('plan-generation-status');
+        if (!el) return;
+        const statusMap = {
+            idle: {
+                title: '准备创建',
+                desc: '选择场景后描述目标，AI 会在信息足够时生成可确认的计划。',
+                action: ''
+            },
+            analyzing: {
+                title: '正在分析',
+                desc: 'AI 正在理解你的目标、方向和场景。',
+                action: ''
+            },
+            generating: {
+                title: '正在生成计划',
+                desc: '正在整理执行周期、每日判定、失败恢复和复盘方式。',
+                action: ''
+            },
+            ready: {
+                title: '计划已生成待确认',
+                desc: '检查摘要后点击确认，计划会进入 Plans 并开始追踪。',
+                action: ''
+            },
+            failed: {
+                title: '生成失败可重试',
+                desc: message || '刚才的生成请求没有完成，可以稍后重试。',
+                action: '<button type="button" class="workspace-link-btn" onclick="AiClassroom.retryLastMessage()">重试上一次</button>'
+            }
+        };
+        const item = statusMap[this.generationStatus] || statusMap.idle;
+        el.className = `plan-generation-status ${this.generationStatus}`;
+        el.innerHTML = `
+            <span class="status-dot"></span>
+            <div>
+                <strong>${this.escapeHtml(item.title)}</strong>
+                <small>${this.escapeHtml(item.desc)}</small>
+            </div>
+            ${item.action}
+        `;
     },
 
     showPlanSummary(summary) {

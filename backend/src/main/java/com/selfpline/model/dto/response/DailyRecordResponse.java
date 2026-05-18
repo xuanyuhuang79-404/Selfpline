@@ -15,6 +15,11 @@ public class DailyRecordResponse {
     private Integer caloriesIntake;
     private Integer caloriesBurned;
     private BigDecimal sleepHours;
+    private Integer steps;
+    private Integer exerciseMinutes;
+    private Integer moodLevel;
+    private Integer energyLevel;
+    private Integer stressLevel;
     private String diaryText;
     private Boolean healthRecordExists;
     private Boolean journalExists;
