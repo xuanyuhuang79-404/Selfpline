@@ -12,6 +12,7 @@ public class PlanDetailResponse {
     private Long planId;
     private Integer planDirection;
     private String targetName;
+    private String shortName;
     private Integer trackingMode;
     private String themeColor;
     private String icon;

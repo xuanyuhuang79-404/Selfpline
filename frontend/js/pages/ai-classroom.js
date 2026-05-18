@@ -53,7 +53,7 @@ const AiClassroom = {
                 <div class="chat-area">
                     <div class="chat-messages" id="classroom-chat"></div>
                     <div class="chat-input-row">
-                        <input id="classroom-input" placeholder="描述你的目标，例如：每天阅读 30 分钟">
+                        <input id="classroom-input" placeholder="描述目标，也可以说：直接生成计划">
                         <button id="classroom-send-btn">发送</button>
                     </div>
                     <div class="plan-confirm-bar hidden" id="plan-confirm-bar">
@@ -111,12 +111,14 @@ const AiClassroom = {
             { sceneKey: 'build_hydration_diet', sceneName: '饮水/健康饮食', sceneDescription: '饮食与饮水打卡', icon: '🥗', accentColor: '#37C978', defaultDirection: 'BUILD' },
             { sceneKey: 'build_reading_habit', sceneName: '阅读习惯', sceneDescription: '每日阅读微行动', icon: '📖', accentColor: '#8F7CFF', defaultDirection: 'BUILD' },
             { sceneKey: 'build_meditation_relax', sceneName: '冥想放松', sceneDescription: '呼吸练习与放松节奏', icon: '🧘', accentColor: '#9B25E8', defaultDirection: 'BUILD' },
+            { sceneKey: 'build_custom_plan', sceneName: '自定义养成计划', sceneDescription: '描述你想建立的计划', icon: '✨', accentColor: '#2EA7DF', defaultDirection: 'BUILD' },
             { sceneKey: 'quit_stay_up_late', sceneName: '戒熬夜', sceneDescription: '晚间触发识别与替代', icon: '🌃', accentColor: '#FF6B6B', defaultDirection: 'QUIT' },
             { sceneKey: 'quit_short_video', sceneName: '减少刷短视频', sceneDescription: '限额与替代行为', icon: '📵', accentColor: '#FF6B6B', defaultDirection: 'QUIT' },
             { sceneKey: 'quit_smoking_less', sceneName: '戒烟/少烟', sceneDescription: '减量路径与复发恢复', icon: '🚭', accentColor: '#FF6B6B', defaultDirection: 'QUIT' },
             { sceneKey: 'quit_caffeine_control', sceneName: '控制咖啡因', sceneDescription: '循序减量与替代方案', icon: '☕', accentColor: '#FF9C5A', defaultDirection: 'QUIT' },
             { sceneKey: 'quit_junk_food', sceneName: '减少外卖/垃圾食品', sceneDescription: '减少高热量触发', icon: '🍔', accentColor: '#FF6B6B', defaultDirection: 'QUIT' },
-            { sceneKey: 'quit_procrastination', sceneName: '减少拖延', sceneDescription: '降低启动阻力', icon: '⏱️', accentColor: '#FF6B6B', defaultDirection: 'QUIT' }
+            { sceneKey: 'quit_procrastination', sceneName: '减少拖延', sceneDescription: '降低启动阻力', icon: '⏱️', accentColor: '#FF6B6B', defaultDirection: 'QUIT' },
+            { sceneKey: 'quit_custom_plan', sceneName: '自定义戒除计划', sceneDescription: '描述你想减少的行为', icon: '🧭', accentColor: '#E9340B', defaultDirection: 'QUIT' }
         ];
     },
 
@@ -182,7 +184,7 @@ const AiClassroom = {
         if (!chat) return;
         chat.innerHTML = '';
         const sceneName = this.selectedTargetName || this.getSelectedSceneName();
-        this.appendMessage('system', `已选择「${sceneName}」。请直接描述你的目标，我会开始引导并生成计划。`);
+        this.appendMessage('system', `已选择「${sceneName}」。描述目标即可；想快速开始时，可以直接说“直接生成计划”。`);
     },
 
     async sendMessage() {
@@ -299,15 +301,20 @@ const AiClassroom = {
     },
 
     showPlanSummary(summary) {
-        this.planSummary = summary;
-        const trackingMap = ['复选框打卡', '倒计时器', '限额计数器'];
+        this.planSummary = {
+            ...summary,
+            trackingMode: 1,
+            planDirection: this.direction === 'QUIT' ? 2 : 1,
+            shortName: summary.shortName || summary.targetName || this.getSelectedSceneName()
+        };
         document.getElementById('plan-summary').innerHTML = `
             <strong>AI 建议计划：</strong>
             <ul class="plan-summary-list">
-                <li>目标：${this.escapeHtml(summary.targetName || '-')}</li>
-                <li>追踪方式：${this.escapeHtml(trackingMap[(summary.trackingMode || 1) - 1] || '-')}</li>
-                <li>主题色：<span class="plan-color-chip" style="background:${summary.themeColor || '#FF7A3D'}"></span></li>
-                <li>图标：${this.escapeHtml(summary.icon || '-')}</li>
+                <li>目标：${this.escapeHtml(this.planSummary.targetName || '-')}</li>
+                <li>首页短名：${this.escapeHtml(this.planSummary.shortName || '-')}</li>
+                <li>追踪方式：复选框打卡</li>
+                <li>主题色：<span class="plan-color-chip" style="background:${this.planSummary.themeColor || '#FF7A3D'}"></span></li>
+                <li>图标：${this.escapeHtml(this.planSummary.icon || '-')}</li>
             </ul>
         `;
     },
@@ -380,7 +387,12 @@ const AiClassroom = {
         try {
             await apiClient.post('/ai/plan-confirm', {
                 sessionId: this.sessionId,
-                planData: this.planSummary
+                planData: {
+                    ...this.planSummary,
+                    trackingMode: 1,
+                    planDirection: this.direction === 'QUIT' ? 2 : 1,
+                    shortName: this.planSummary.shortName || this.planSummary.targetName || this.getSelectedSceneName()
+                }
             });
             Toast.show('计划创建成功！');
             PageRouter.navigate('home');

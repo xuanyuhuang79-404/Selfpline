@@ -1,174 +1,332 @@
-// 健康打卡页面
+// 记录页面：身体记录 + 今日小记
 const HealthCheckinPage = {
-    completedPlanIds: [],
-    activePlans: [],
+    metrics: [
+        {
+            key: 'weight',
+            title: '体重',
+            icon: '⚖️',
+            unit: 'kg',
+            min: 30,
+            max: 200,
+            step: 0.1,
+            decimals: 1,
+            defaultValue: 70.0,
+            requestKey: 'currentWeight'
+        },
+        {
+            key: 'caloriesIn',
+            title: '摄入卡路里',
+            icon: '🍽️',
+            unit: 'kcal',
+            min: 0,
+            max: 5000,
+            step: 1,
+            decimals: 0,
+            defaultValue: 2000,
+            requestKey: 'caloriesIntake'
+        },
+        {
+            key: 'caloriesOut',
+            title: '消耗卡路里',
+            icon: '🔥',
+            unit: 'kcal',
+            min: 0,
+            max: 5000,
+            step: 1,
+            decimals: 0,
+            defaultValue: 500,
+            requestKey: 'caloriesBurned'
+        },
+        {
+            key: 'sleepHours',
+            title: '睡眠时长',
+            icon: '🌙',
+            unit: 'h',
+            min: 0,
+            max: 12,
+            step: 0.1,
+            decimals: 1,
+            defaultValue: 7.5,
+            requestKey: 'sleepHours'
+        }
+    ],
+    values: {},
+    diaryLimit: 1000,
+    isSubmitted: false,
+    isSubmitting: false,
 
     async render() {
         document.getElementById('top-nav').classList.remove('hidden');
         document.getElementById('bottom-nav').classList.remove('hidden');
         document.getElementById('fab-add-habit').classList.add('hidden');
 
+        this.resetLocalValues();
+        this.isSubmitted = false;
+        this.isSubmitting = false;
         document.getElementById('page-container').innerHTML = `
-            <div class="checkin-page">
-                <section class="checkin-header">
+            <div class="record-page">
+                <section class="record-header">
                     <div>
-                        <p class="page-kicker">健康打卡</p>
-                        <h1>记录今天的身体状态</h1>
-                        <p>同步体重、热量、睡眠和计划完成情况，帮助 AI 指导师理解你的执行状态。</p>
+                        <p class="page-kicker">今日记录</p>
+                        <h1>记录今天</h1>
+                        <p>记录今天的身体状态和一点真实想法，帮助你看见长期变化。</p>
                     </div>
                 </section>
 
-                <div class="checkin-form">
-                <div class="checkin-card">
-                    <h3>📏 体重 (kg)</h3>
-                    <div class="slider-group">
-                        <input type="range" id="weight-slider" min="30" max="200" value="70" step="0.1">
-                        <span class="slider-value" id="weight-value">70.0</span>
-                    </div>
-                </div>
+                <section class="record-metrics-grid" aria-label="身体记录">
+                    ${this.metrics.map(metric => this.renderMetricCard(metric)).join('')}
+                </section>
 
-                <div class="checkin-card">
-                    <h3>🍔 摄入卡路里 (kcal)</h3>
-                    <div class="slider-group">
-                        <input type="range" id="calories-in-slider" min="0" max="5000" value="2000" step="50">
-                        <span class="slider-value" id="calories-in-value">2000</span>
+                <section class="journal-card">
+                    <div class="journal-heading">
+                        <div>
+                            <h2>今日小记</h2>
+                            <p>写下今天发生了什么、状态如何，或者有什么值得复盘。</p>
+                        </div>
+                        <span id="diary-count">0/${this.diaryLimit}</span>
                     </div>
-                </div>
+                    <textarea
+                        id="diary-text"
+                        class="journal-textarea"
+                        maxlength="${this.diaryLimit}"
+                        rows="5"
+                        placeholder="今天最值得记录的一件事是……"></textarea>
+                </section>
 
-                <div class="checkin-card">
-                    <h3>🔥 消耗卡路里 (kcal)</h3>
-                    <div class="slider-group">
-                        <input type="range" id="calories-out-slider" min="0" max="5000" value="500" step="50">
-                        <span class="slider-value" id="calories-out-value">500</span>
-                    </div>
-                </div>
+                <section class="record-submitted-card hidden" id="record-submitted-card" aria-live="polite">
+                    <strong>今日日志已提交</strong>
+                    <span>如需修改今天的身体记录或小记，请先重置后重新填写。</span>
+                </section>
 
-                <div class="checkin-card">
-                    <h3>😴 睡眠时长 (小时)</h3>
-                    <div class="slider-group">
-                        <input type="range" id="sleep-slider" min="0" max="12" value="7.5" step="0.5">
-                        <span class="slider-value" id="sleep-value">7.5</span>
-                    </div>
-                </div>
-
-                <div class="checkin-card plan-checkin-card">
-                    <h3>今日计划</h3>
-                    <div id="planChecklist">
-                        <div class="plan-check-placeholder">加载中...</div>
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" id="btn-submit-checkin">提交今日打卡</button>
+                <div class="record-actions">
+                    <button class="btn btn-primary record-submit-btn" id="btn-submit-record" type="button">提交今日记录</button>
+                    <button class="record-reset-btn hidden" id="btn-reset-record" type="button">重置</button>
                 </div>
             </div>
         `;
 
-        this.bindSliders();
-        this.loadPlans();
-        document.getElementById('btn-submit-checkin').addEventListener('click', () => this.submit());
+        this.bindMetricControls();
+        this.bindJournal();
+        document.getElementById('btn-submit-record')?.addEventListener('click', () => this.submit());
+        document.getElementById('btn-reset-record')?.addEventListener('click', () => this.resetTodayRecord());
+        await this.loadTodayRecord();
     },
 
-    bindSliders() {
-        [
-            ['weight-slider', 'weight-value'],
-            ['calories-in-slider', 'calories-in-value'],
-            ['calories-out-slider', 'calories-out-value'],
-            ['sleep-slider', 'sleep-value']
-        ].forEach(([sliderId, valueId]) => {
-            const slider = document.getElementById(sliderId);
-            const value = document.getElementById(valueId);
-            slider.addEventListener('input', () => { value.textContent = slider.value; });
+    renderMetricCard(metric) {
+        return `
+            <article class="record-metric-card" style="--metric-accent: ${this.getMetricAccent(metric.key)}">
+                <div class="metric-card-head">
+                    <span class="metric-icon">${metric.icon}</span>
+                    <span class="metric-title">${metric.title}</span>
+                </div>
+                <div class="metric-main-value">
+                    <strong id="${metric.key}-value">${this.formatValue(metric, this.values[metric.key])}</strong>
+                    <span>${metric.unit}</span>
+                </div>
+                <input
+                    type="range"
+                    id="${metric.key}"
+                    class="metric-slider"
+                    min="${metric.min}"
+                    max="${metric.max}"
+                    step="${metric.step}"
+                    value="${this.values[metric.key]}"
+                    data-metric="${metric.key}">
+                <div class="metric-controls">
+                    <button class="metric-stepper-btn" type="button" data-metric="${metric.key}" data-delta="-${metric.step}" aria-label="${metric.title}减少">−</button>
+                    <span>${metric.min}${metric.unit} - ${metric.max}${metric.unit}</span>
+                    <button class="metric-stepper-btn" type="button" data-metric="${metric.key}" data-delta="${metric.step}" aria-label="${metric.title}增加">+</button>
+                </div>
+            </article>
+        `;
+    },
+
+    bindMetricControls() {
+        this.metrics.forEach(metric => {
+            const slider = document.getElementById(metric.key);
+            if (!slider) return;
+            slider.addEventListener('input', () => {
+                this.setMetricValue(metric.key, parseFloat(slider.value));
+            });
+            this.setMetricValue(metric.key, this.values[metric.key]);
         });
+
+        document.querySelectorAll('.metric-stepper-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const key = button.dataset.metric;
+                const delta = parseFloat(button.dataset.delta || '0');
+                this.setMetricValue(key, (this.values[key] || 0) + delta);
+            });
+        });
+    },
+
+    bindJournal() {
+        const textarea = document.getElementById('diary-text');
+        if (!textarea) return;
+        textarea.addEventListener('input', () => this.updateDiaryCount());
+        this.updateDiaryCount();
+    },
+
+    async loadTodayRecord() {
+        try {
+            const result = await apiClient.get('/record/today');
+            const record = result.data || {};
+            this.metrics.forEach(metric => {
+                const value = record[metric.requestKey];
+                this.setMetricValue(metric.key, value !== null && value !== undefined ? Number(value) : metric.defaultValue);
+            });
+            const diaryEl = document.getElementById('diary-text');
+            if (diaryEl) {
+                diaryEl.value = record.diaryText || '';
+                this.updateDiaryCount();
+            }
+            this.isSubmitted = Boolean(record.healthRecordExists || record.journalExists);
+            this.applySubmittedState();
+        } catch (e) {
+            Toast.show('今日记录加载失败: ' + e.message);
+            this.applySubmittedState();
+        }
     },
 
     async submit() {
-        // Collect checked plan IDs
-        this.completedPlanIds = [];
-        document.querySelectorAll('.check-icon').forEach(icon => {
-            if (icon.textContent === '☑') {
-                const planId = icon.closest('.plan-check-item').dataset.planId;
-                if (planId) this.completedPlanIds.push(parseInt(planId));
-            }
-        });
-
-        const btn = document.querySelector('#btn-submit-checkin');
-        if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
+        if (this.isSubmitted || this.isSubmitting) return;
+        this.isSubmitting = true;
+        const btn = document.getElementById('btn-submit-record');
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('btn-loading');
+        }
 
         try {
-            await apiClient.post('/health/daily-record', {
-                recordDate: new Date().toISOString().split('T')[0],
-                currentWeight: parseFloat(document.getElementById('weight-slider').value),
-                caloriesIntake: parseInt(document.getElementById('calories-in-slider').value),
-                caloriesBurned: parseInt(document.getElementById('calories-out-slider').value),
-                sleepHours: parseFloat(document.getElementById('sleep-slider').value),
-                completedPlanIds: this.completedPlanIds
+            await apiClient.post('/record/today', {
+                recordDate: this.getTodayDate(),
+                currentWeight: this.values.weight,
+                caloriesIntake: this.values.caloriesIn,
+                caloriesBurned: this.values.caloriesOut,
+                sleepHours: this.values.sleepHours,
+                diaryText: document.getElementById('diary-text')?.value || ''
             });
-            Toast.show('打卡成功！');
+            Toast.show('今日日志已提交');
+            this.isSubmitted = true;
+            this.applySubmittedState();
         } catch (e) {
             Toast.show('保存失败: ' + e.message);
         } finally {
-            if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
-        }
-    },
-
-    async loadPlans() {
-        const checklistContainer = document.getElementById('planChecklist');
-        if (!checklistContainer) return;
-
-        try {
-            const result = await apiClient.get('/plan/dashboard');
-            const plans = result.data || [];
-            if (plans.length === 0) {
-                checklistContainer.innerHTML = '<div class="plan-check-placeholder">今天没有进行中的计划</div>';
-                return;
+            this.isSubmitting = false;
+            if (btn) {
+                btn.classList.remove('btn-loading');
             }
-
-            this.activePlans = plans;
-            checklistContainer.innerHTML = plans.map(plan => `
-                <div class="plan-check-item${plan.todayCompleted ? ' is-done' : ''}" data-plan-id="${plan.planId}">
-                    <span class="check-icon" id="checkIcon-${plan.planId}"
-                        onclick="HealthCheckinPage.togglePlanCheck(${plan.planId})">${plan.todayCompleted ? '☑' : '☐'}</span>
-                    <span class="plan-name">${this.escapeHtml(plan.icon || '📋')} ${this.escapeHtml(plan.targetName || '未命名计划')}</span>
-                    <span class="plan-status">${plan.todayCompleted ? '已完成' : '未打卡'}</span>
-                </div>
-            `).join('');
-        } catch (e) {
-            checklistContainer.innerHTML = `<div class="plan-check-placeholder">${this.escapeHtml(e.message || '加载失败')}</div>`;
+            this.applySubmittedState();
         }
     },
 
-    async togglePlanCheck(planId) {
-        const icon = document.getElementById('checkIcon-' + planId);
-        const isChecked = icon.textContent === '☑';
+    async resetTodayRecord() {
+        if (!this.isSubmitted) return;
+        if (!confirm('确定重置今日记录吗？这不会影响今日计划打卡。')) return;
 
-        // Optimistic update
-        icon.textContent = isChecked ? '☐' : '☑';
-        const item = icon.closest('.plan-check-item');
-        const status = item?.querySelector('.plan-status');
-        item?.classList.toggle('is-done', !isChecked);
-        if (status) status.textContent = isChecked ? '未打卡' : '已完成';
+        this.isSubmitting = true;
+        const btn = document.getElementById('btn-reset-record');
+        if (btn) btn.disabled = true;
 
         try {
-            await apiClient.post('/plan/daily-log', {
-                planId: planId,
-                recordDate: new Date().toISOString().split('T')[0],
-                isCompleted: !isChecked,
-                actualValue: !isChecked ? 1 : 0,
-                targetValue: 1,
-                notes: '健康打卡时勾选'
-            });
+            await apiClient.delete('/record/today');
+            this.resetLocalValues();
+            this.metrics.forEach(metric => this.setMetricValue(metric.key, metric.defaultValue));
+            const diaryEl = document.getElementById('diary-text');
+            if (diaryEl) diaryEl.value = '';
+            this.updateDiaryCount();
+            this.isSubmitted = false;
+            this.applySubmittedState();
+            Toast.show('今日记录已重置');
         } catch (e) {
-            // Revert
-            icon.textContent = isChecked ? '☑' : '☐';
-            item?.classList.toggle('is-done', isChecked);
-            if (status) status.textContent = isChecked ? '已完成' : '未打卡';
-            Toast.show('操作失败: ' + e.message);
+            Toast.show('重置失败: ' + e.message);
+        } finally {
+            this.isSubmitting = false;
+            this.applySubmittedState();
         }
     },
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text || '';
-        return div.innerHTML;
+    applySubmittedState() {
+        const page = document.querySelector('.record-page');
+        const submittedCard = document.getElementById('record-submitted-card');
+        const submitBtn = document.getElementById('btn-submit-record');
+        const resetBtn = document.getElementById('btn-reset-record');
+        const diaryEl = document.getElementById('diary-text');
+
+        page?.classList.toggle('record-submitted', this.isSubmitted);
+        submittedCard?.classList.toggle('hidden', !this.isSubmitted);
+
+        if (submitBtn) {
+            submitBtn.classList.toggle('hidden', this.isSubmitted);
+            submitBtn.disabled = this.isSubmitted || this.isSubmitting;
+            submitBtn.textContent = this.isSubmitting ? '提交中...' : '提交今日记录';
+        }
+        if (resetBtn) {
+            resetBtn.classList.toggle('hidden', !this.isSubmitted);
+            resetBtn.disabled = this.isSubmitting;
+        }
+
+        if (diaryEl) diaryEl.readOnly = this.isSubmitted;
+        document.querySelectorAll('.metric-slider, .metric-stepper-btn').forEach(el => {
+            el.disabled = this.isSubmitted;
+        });
+    },
+
+    resetLocalValues() {
+        this.values = {};
+        this.metrics.forEach(metric => {
+            this.values[metric.key] = metric.defaultValue;
+        });
+    },
+
+    setMetricValue(key, rawValue) {
+        const metric = this.metrics.find(item => item.key === key);
+        if (!metric) return;
+        const normalized = this.normalizeValue(metric, rawValue);
+        this.values[key] = normalized;
+
+        const slider = document.getElementById(key);
+        if (slider) slider.value = normalized;
+        const valueEl = document.getElementById(`${key}-value`);
+        if (valueEl) valueEl.textContent = this.formatValue(metric, normalized);
+    },
+
+    normalizeValue(metric, rawValue) {
+        const numeric = Number.isFinite(Number(rawValue)) ? Number(rawValue) : metric.defaultValue;
+        const clamped = Math.min(metric.max, Math.max(metric.min, numeric));
+        if (metric.decimals === 0) {
+            return Math.round(clamped);
+        }
+        return Number(clamped.toFixed(metric.decimals));
+    },
+
+    formatValue(metric, value) {
+        if (metric.decimals === 0) return String(Math.round(value));
+        return Number(value).toFixed(metric.decimals);
+    },
+
+    updateDiaryCount() {
+        const textarea = document.getElementById('diary-text');
+        const count = document.getElementById('diary-count');
+        if (!textarea || !count) return;
+        count.textContent = `${textarea.value.length}/${this.diaryLimit}`;
+    },
+
+    getTodayDate() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    },
+
+    getMetricAccent(key) {
+        const colors = {
+            weight: '#2ea7df',
+            caloriesIn: '#ff7a3d',
+            caloriesOut: '#e9340b',
+            sleepHours: '#9b25e8'
+        };
+        return colors[key] || '#ff7a3d';
     }
 };

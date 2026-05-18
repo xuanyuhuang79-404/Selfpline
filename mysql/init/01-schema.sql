@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `ai_custom_plan` (
     `user_id` BIGINT NOT NULL,
     `plan_direction` TINYINT NOT NULL COMMENT '1=BUILD 2=QUIT',
     `target_name` VARCHAR(200) NOT NULL,
+    `short_name` VARCHAR(40) DEFAULT NULL COMMENT '计划短名/首页缩略指代',
     `tracking_mode` TINYINT NOT NULL COMMENT '1=CHECKBOX 2=TIMER 3=COUNTER',
     `theme_color` VARCHAR(20) DEFAULT '#4CAF50',
     `icon` VARCHAR(50) DEFAULT '跑步',
@@ -66,4 +67,30 @@ CREATE TABLE IF NOT EXISTS `plan_daily_log` (
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_record_date` (`record_date`),
     UNIQUE INDEX `uk_plan_date` (`plan_id`, `record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `health_daily_record` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `record_date` DATE NOT NULL,
+    `current_weight` DECIMAL(5,2) DEFAULT NULL,
+    `calories_intake` INT DEFAULT NULL COMMENT '摄入卡路里',
+    `calories_burned` INT DEFAULT NULL COMMENT '消耗卡路里',
+    `sleep_hours` DECIMAL(3,1) DEFAULT NULL COMMENT '睡眠时长',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `uk_user_date` (`user_id`, `record_date`),
+    INDEX `idx_health_user_date` (`user_id`, `record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_daily_journal` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `record_date` DATE NOT NULL,
+    `diary_text` TEXT NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `uk_user_date` (`user_id`, `record_date`),
+    INDEX `idx_user_date` (`user_id`, `record_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -80,68 +80,234 @@
 .week-strip {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.week-strip.empty {
+    grid-template-columns: 1fr;
+}
+
+.week-energy-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
+    margin-bottom: 14px;
 }
 
-.week-day {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+.week-summary-loading,
+.week-summary-item {
     min-width: 0;
-    min-height: 92px;
-    padding: 12px 8px;
-    border-radius: 24px;
-    font-size: 12px;
-    cursor: pointer;
+    padding: 12px 14px;
+    border: 1px solid rgba(226, 229, 237, 0.78);
+    border-radius: 20px;
     background: var(--color-surface);
-    color: var(--color-text-secondary);
-    transition: var(--transition);
 }
 
-.week-day:hover {
+.week-summary-loading {
+    grid-column: 1 / -1;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.week-summary-item span {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.week-summary-item strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--color-text);
+    font-size: clamp(18px, 2vw, 24px);
+    line-height: 1.05;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.week-energy-bar {
+    height: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: rgba(229, 231, 235, 0.82);
+    box-shadow: inset 0 1px 2px rgba(31, 41, 55, 0.08);
+}
+
+.week-energy-bar span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--color-build), var(--color-primary), var(--color-quit));
+    transition: width 0.38s ease;
+}
+
+.rhythm-day-card {
+    min-width: 0;
+    min-height: 164px;
+    padding: 12px;
+    display: grid;
+    grid-template-rows: auto minmax(62px, 1fr) auto auto;
+    gap: 8px;
+    border: 1px solid rgba(226, 229, 237, 0.86);
+    border-radius: 24px;
+    background: linear-gradient(180deg, #fff, var(--color-surface));
+    color: var(--color-text-secondary);
+    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+
+.rhythm-day-card:hover {
     transform: translateY(-2px);
-    background: #fff;
+    border-color: rgba(255, 122, 61, 0.24);
     box-shadow: var(--shadow-soft);
 }
 
-.week-day.today {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-quit));
+.rhythm-day-card.today {
+    background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.35), transparent 34%),
+        linear-gradient(145deg, var(--color-primary), var(--color-quit));
     color: #fff;
-    font-weight: 800;
-    box-shadow: 0 16px 28px rgba(255, 122, 61, 0.2);
+    border-color: rgba(255, 122, 61, 0.3);
+    box-shadow: 0 18px 34px rgba(255, 122, 61, 0.24);
 }
 
-.week-day .day-label {
-    font-size: 12px;
-    line-height: 1.1;
-}
-
-.week-day .day-date {
-    margin-top: 5px;
-    font-size: clamp(20px, 2.6vw, 30px);
-    font-weight: 800;
-    line-height: 1.1;
-}
-
-.week-day .dots {
+.rhythm-day-top {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.rhythm-day-top .day-label {
+    color: inherit;
+    font-size: 12px;
+    font-weight: 850;
+    opacity: 0.84;
+}
+
+.rhythm-day-top .day-date {
+    color: inherit;
+    font-size: clamp(20px, 2.3vw, 30px);
+    line-height: 1;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+}
+
+.rhythm-energy-track {
+    position: relative;
+    min-height: 62px;
+    border-radius: 18px;
+    background: rgba(31, 41, 55, 0.06);
+    overflow: hidden;
+}
+
+.rhythm-energy-track span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-height: 6px;
+    border-radius: 18px 18px 0 0;
+    background: linear-gradient(180deg, rgba(139, 234, 60, 0.92), rgba(46, 167, 223, 0.72));
+}
+
+.rhythm-day-card.today .rhythm-energy-track {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.rhythm-day-card.today .rhythm-energy-track span {
+    background: rgba(255, 255, 255, 0.88);
+}
+
+.rhythm-day-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.rhythm-day-copy span {
+    color: inherit;
+    font-size: 12px;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+}
+
+.rhythm-day-copy small {
+    color: inherit;
+    font-size: 11px;
+    opacity: 0.72;
+}
+
+.rhythm-plan-dots {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
-    justify-content: center;
-    gap: 3px;
-    max-width: 46px;
-    margin-top: 8px;
+    gap: 4px;
+    min-height: 14px;
 }
 
-.week-day .dot {
-    width: 6px;
-    height: 6px;
+.rhythm-plan-dots span {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
     border-radius: 50%;
-    background: rgba(155, 159, 168, 0.34);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.48);
 }
 
-.week-day.today .dot {
+.rhythm-plan-dots em {
+    color: inherit;
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 850;
+    opacity: 0.74;
+}
+
+.week-panel-note {
+    margin-top: 12px;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    text-align: right;
+}
+
+.week-rhythm-empty {
+    min-width: 0;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px dashed rgba(255, 122, 61, 0.34);
+    border-radius: 24px;
     background: rgba(255, 255, 255, 0.74);
+    text-align: center;
+}
+
+.week-rhythm-empty strong {
+    color: var(--color-text);
+    font-size: 17px;
+    font-weight: 900;
+}
+
+.week-rhythm-empty span {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+}
+
+.week-rhythm-empty button {
+    min-height: 38px;
+    margin-top: 6px;
+    padding: 8px 18px;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 850;
+    cursor: pointer;
 }
 
 .habit-cards-list {
@@ -236,6 +402,17 @@
     line-height: 1;
     cursor: pointer;
     white-space: nowrap;
+}
+
+.habit-card .card-action.checked,
+.habit-card.completed .card-action {
+    background: var(--card-accent, var(--color-primary));
+    color: #fff;
+}
+
+.habit-card .card-action:disabled {
+    cursor: wait;
+    opacity: 0.7;
 }
 
 .habit-card.build .card-progress-bar {
@@ -469,8 +646,22 @@
     }
 
     .week-strip {
-        grid-template-columns: repeat(7, minmax(72px, 1fr));
+        grid-template-columns: repeat(7, minmax(132px, 1fr));
         overflow-x: auto;
         padding-bottom: 4px;
+    }
+
+    .week-energy-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .week-energy-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .week-panel-note {
+        text-align: left;
     }
 }

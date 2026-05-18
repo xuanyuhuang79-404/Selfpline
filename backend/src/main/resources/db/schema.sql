@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS ai_custom_plan (
     user_id BIGINT NOT NULL,
     plan_direction TINYINT NOT NULL COMMENT '1-Build养成 2-Quit戒除',
     target_name VARCHAR(100) NOT NULL COMMENT '目标名称',
+    short_name VARCHAR(40) COMMENT '计划短名/首页缩略指代',
     tracking_mode TINYINT NOT NULL DEFAULT 1 COMMENT '1-复选框 2-倒计时 3-限额计数',
     theme_color VARCHAR(20) DEFAULT '#4CAF50' COMMENT '卡片主题色',
     icon VARCHAR(50) DEFAULT '📋' COMMENT '图标',
@@ -68,7 +69,20 @@ CREATE TABLE IF NOT EXISTS health_daily_record (
     FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日健康打卡';
 
--- 5. AI对话日志表
+-- 5. 用户每日小记表
+CREATE TABLE IF NOT EXISTS user_daily_journal (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    record_date DATE NOT NULL,
+    diary_text TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_date (user_id, record_date),
+    INDEX idx_user_date (user_id, record_date),
+    FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户每日小记';
+
+-- 6. AI对话日志表
 CREATE TABLE IF NOT EXISTS ai_chat_log (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -84,7 +98,7 @@ CREATE TABLE IF NOT EXISTS ai_chat_log (
     FOREIGN KEY (plan_id) REFERENCES ai_custom_plan(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI对话日志';
 
--- 6. AI 教练身份配置表
+-- 7. AI 教练身份配置表
 CREATE TABLE IF NOT EXISTS ai_coach_config (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     coach_key VARCHAR(50) NOT NULL UNIQUE COMMENT '策略键名',
@@ -99,7 +113,7 @@ CREATE TABLE IF NOT EXISTS ai_coach_config (
     INDEX idx_active_sort (is_active, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI教练身份配置';
 
--- 7. 运动社区动态表
+-- 8. 运动社区动态表
 CREATE TABLE IF NOT EXISTS community_post (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -113,7 +127,7 @@ CREATE TABLE IF NOT EXISTS community_post (
     FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区动态';
 
--- 8. 系统通知表
+-- 9. 系统通知表
 CREATE TABLE IF NOT EXISTS sys_notification (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,

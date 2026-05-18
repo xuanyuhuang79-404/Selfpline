@@ -93,6 +93,8 @@ public class AiServiceImpl implements AiService {
             Map.entry("habit_build", "REHAB_COACH"),
             Map.entry("habit_quit", "REHAB_COACH"),
             Map.entry("goal_breakdown", "REHAB_COACH"),
+            Map.entry("build_custom_plan", "REHAB_COACH"),
+            Map.entry("quit_custom_plan", "REHAB_COACH"),
             Map.entry("build_exercise_habit", "FAT_LOSS_COACH"),
             Map.entry("build_study_focus", "REHAB_COACH"),
             Map.entry("build_sleep_early", "REHAB_COACH"),
@@ -143,7 +145,7 @@ public class AiServiceImpl implements AiService {
                     List.of("提供一般瑜伽拉伸建议", "不替代医疗或康复指导")),
             new AiScenarioDefinition(
                     "habit_build", "建立好习惯", "从小行动开始，把好习惯落到每天",
-                    "BUILD", "🌱", "#37C978", true, true,
+                    "BUILD", "🌱", "#37C978", false, true,
                     "你是 Selfpline 的习惯建立指导师。请用温和、清晰、具体的中文回应，帮助用户把想建立的习惯拆成可执行的每日动作。"
                             + "你需要优先结合用户的目标、可用时间、当前计划、近期打卡记录和遇到的困难来个性化建议。"
                             + "输出结构固定为：1) 我理解的目标；2) 今日最小行动；3) 触发场景与提醒方式；4) 复盘问题。"
@@ -211,6 +213,14 @@ public class AiServiceImpl implements AiService {
                     List.of("不做心理诊断", "不承诺快速治愈", "若出现现实危险建议联系可信任人员或紧急服务"),
                     List.of("仅用于计划创建", "不替代心理治疗")),
             new AiScenarioDefinition(
+                    "build_custom_plan", "自定义养成计划", "由用户描述想建立的计划",
+                    "BUILD", "✨", "#2EA7DF", true, false,
+                    "你是 Selfpline 的创建计划指导师，当前任务是 Build/自定义养成计划。请先理解用户真正想建立的习惯，再把它收敛成每天可执行的动作、触发场景和复盘方式。"
+                            + "计划必须具体、温和、可追踪，不要把目标扩大成多个互相冲突的计划。",
+                    List.of("我想建立一个自己定义的新习惯", "我想每天做一件让生活更稳定的事", "帮我把这个想法变成可执行计划"),
+                    List.of("不承诺确定结果", "不建议超出用户现实时间和身体状态的安排", "涉及高风险专业问题时提醒咨询专业人士"),
+                    List.of("仅用于创建执行计划", "不替代医疗、法律、金融等专业判断")),
+            new AiScenarioDefinition(
                     "quit_stay_up_late", "戒熬夜", "Quit 场景：减少熬夜行为",
                     "QUIT", "🌃", "#FF6B6B", true, false,
                     "你是 Selfpline 的创建计划指导师，当前任务是 Quit/戒熬夜。请引导用户识别触发因素、替代动作、减量路径与复发恢复。"
@@ -258,6 +268,14 @@ public class AiServiceImpl implements AiService {
                     List.of("我总是拖到最后一刻", "帮我做一个反拖延计划", "我想减少刷手机拖延"),
                     List.of("不贴负面标签", "不制造焦虑", "建议必须具体可执行"),
                     List.of("仅用于计划创建", "不替代心理治疗")),
+            new AiScenarioDefinition(
+                    "quit_custom_plan", "自定义戒除计划", "由用户描述想减少或戒除的行为",
+                    "QUIT", "🧭", "#E9340B", true, false,
+                    "你是 Selfpline 的创建计划指导师，当前任务是 Quit/自定义戒除计划。请帮助用户识别想减少或戒除的具体行为、触发场景、替代动作和复发后的恢复步骤。"
+                            + "计划应以渐进减量和替代行为为主，不羞辱用户，不要求一次性完美停止。",
+                    List.of("我想减少一个自己定义的坏习惯", "帮我戒掉一个反复出现的行为", "我想把这个冲动降下来"),
+                    List.of("不羞辱用户", "不建议危险的突然停用行为", "涉及成瘾、药物或严重失控时建议寻求专业帮助"),
+                    List.of("仅用于创建执行计划", "不替代医疗或心理治疗")),
             new AiScenarioDefinition(
                     "coach_gentle_companion", "温柔陪伴型", "AI 指导师聊天：温和陪伴与鼓励",
                     "BUILD", "🌿", "#37C978", false, true,
@@ -329,7 +347,7 @@ public class AiServiceImpl implements AiService {
                     List.of("基于习惯数据做趋势建议", "不输出专业诊断")),
             new AiScenarioDefinition(
                     "goal_breakdown", "目标拆解", "把长期目标拆成阶段与动作",
-                    "BUILD", "🎯", "#8F7CFF", true, true,
+                    "BUILD", "🎯", "#8F7CFF", false, true,
                     "你是 Selfpline 的目标拆解指导师。请把用户的模糊目标拆成阶段里程碑、每周重点、每日行动、追踪指标和风险预案。"
                             + "当目标过大时，先帮用户收敛范围，再给出第一阶段行动。"
                             + "输出结构固定为：1) 目标澄清；2) 30天阶段目标；3) 本周重点；4) 今日行动；5) 追踪指标。"
@@ -339,7 +357,7 @@ public class AiServiceImpl implements AiService {
                     List.of("做目标管理和行动拆解", "不替用户做高风险决策")),
             new AiScenarioDefinition(
                     "focus_study", "学习/专注", "设计专注节奏与抗干扰策略",
-                    "BUILD", "📚", "#5DA9FF", true, true,
+                    "BUILD", "📚", "#5DA9FF", false, true,
                     "你是 Selfpline 的学习专注指导师。请围绕任务切片、专注时段、休息节奏、干扰阻断和复盘反馈设计建议。"
                             + "优先推荐可持续的短时专注，而不是超长学习。"
                             + "输出结构固定为：1) 当前任务切片；2) 一轮专注安排；3) 干扰处理；4) 结束复盘问题。"
@@ -349,7 +367,7 @@ public class AiServiceImpl implements AiService {
                     List.of("提供学习方法和专注策略", "不替代教育、医疗或心理专业服务")),
             new AiScenarioDefinition(
                     "fitness_health", "运动与健康", "安全渐进的运动与健康指导",
-                    "BUILD", "🏃", "#FF8A3D", true, true,
+                    "BUILD", "🏃", "#FF8A3D", false, true,
                     "你是 Selfpline 的运动健康指导师。请结合用户身高体重、健康目标、病史、当前运动基础和打卡记录，给出安全、渐进、可恢复的运动建议。"
                             + "输出结构固定为：1) 今日适合强度；2) 训练动作或活动；3) 恢复提醒；4) 何时降低强度。"
                             + "如用户描述疼痛、胸闷、眩晕、伤病或明显不适，应优先建议停止高风险动作并寻求专业帮助。",
@@ -358,7 +376,7 @@ public class AiServiceImpl implements AiService {
                     List.of("只提供一般运动健康建议", "不替代医生、康复师或营养师")),
             new AiScenarioDefinition(
                     "sleep_routine", "睡眠作息", "稳定入睡、起床与晚间节奏",
-                    "BUILD", "🌙", "#7C8BFF", true, true,
+                    "BUILD", "🌙", "#7C8BFF", false, true,
                     "你是 Selfpline 的睡眠作息指导师。请帮助用户建立固定起床时间、睡前降噪流程、光照管理、咖啡因边界和晚间收尾动作。"
                             + "输出结构固定为：1) 今晚一个调整；2) 明早一个锚点；3) 避免事项；4) 明天复盘问题。"
                             + "建议要温和且可坚持，不把偶发失眠解释为严重问题。",
@@ -470,7 +488,8 @@ public class AiServiceImpl implements AiService {
         // 6. Build first user message
         String directionLabel = "BUILD".equals(direction) ? "养成习惯" : "戒除习惯";
         String firstUserMessage = "我想建立一个新计划：" + request.getTopic()
-                + "。计划方向是" + directionLabel + "。请引导我逐步完成计划创建。";
+                + "。计划方向是" + directionLabel
+                + "。如果这些信息已经足够，请直接生成一个初版计划；只有缺少最基本目标时，再问我一个必要问题。";
 
         // 7. Generate sessionId
         String sessionId = UUID.randomUUID().toString();
@@ -824,20 +843,26 @@ public class AiServiceImpl implements AiService {
         String sceneInstruction = resolveScenePrompt(sceneKey);
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusDays(30);
+        int planDirectionCode = "QUIT".equalsIgnoreCase(direction) ? 2 : 1;
 
         // 5. Append PLAN_READY detection instruction
-        String planReadyInstruction = "\n当收集到足够信息可以生成完整计划时，请在回复末尾附加以下JSON(不要包含在其他地方):\n"
+        String planReadyInstruction = "\n计划生成规则：\n"
+                + "- 如果用户已经给出明确目标/行为，或表达“不想细聊”“直接开始”“先生成”“快速创建”“不用细问”等意图，请基于现有信息直接生成一个合理的初版计划，并在回复末尾附加以下JSON(不要包含在其他地方):\n"
                 + "[PLAN_READY]\n"
-                + "{\"planReady\":true,\"planSummary\":{\"targetName\":\"计划名称\",\"trackingMode\":1,"
-                + "\"planDirection\":1,\"planContent\":\"完整的执行计划(Markdown格式)\","
+                + "{\"planReady\":true,\"planSummary\":{\"targetName\":\"计划名称\",\"shortName\":\"短名\",\"trackingMode\":1,"
+                + "\"planDirection\":" + planDirectionCode + ",\"planContent\":\"完整的执行计划(Markdown格式)\","
                 + "\"coachType\":\"" + coachType + "\","
                 + "\"startDate\":\"" + startDate + "\",\"endDate\":\"" + endDate + "\","
-                + "\"themeColor\":\"#4CAF50\",\"icon\":\"跑步\"}}\n"
+                + "\"themeColor\":\"#4CAF50\",\"icon\":\"🏃\"}}\n"
                 + "[/PLAN_READY]\n"
-                + "trackingMode: 1=复选框打卡 2=倒计时器 3=限额计数器。"
-                + "planDirection: 1=BUILD 2=QUIT。"
-                + "图标请根据主题选择合适的emoji。"
-                + "如信息仍不足请继续提问，planReady设为false。";
+                + "- trackingMode 当前必须固定为 1=复选框打卡。\n"
+                + "- planDirection: 1=BUILD 2=QUIT。\n"
+                + "- shortName 是首页缩略指代，必须短、稳定、可辨识，例如“晨跑训练”“睡前阅读”“减短视频”。\n"
+                + "- 图标请根据主题选择合适的emoji。\n"
+                + "- planContent 需要包含：计划目标、每日打钩判定、默认执行时间/场景、第一周最小行动、后续递进方式、失败后的重置方式。Quit计划还要包含触发场景、替代动作和复发恢复步骤。\n"
+                + "- 不要为了收集偏好、时间、强度等细节连续追问；这些细节可以在初版计划中给出可调整的默认值。\n"
+                + "- 默认计划周期为30天，从" + startDate + "开始，到" + endDate + "结束；如果用户没给时间，就不要再追问时间。\n"
+                + "- 只有当用户没有给出任何可执行目标，或目标存在明显安全/现实风险时，才继续提问；此时最多问一个关键问题，且不要附加PLAN_READY。";
 
         // Style guide for natural, product-like AI output
         String styleGuide = "\n\n回复风格要求：\n"
@@ -846,7 +871,7 @@ public class AiServiceImpl implements AiService {
                 + "- 每条回复可以适当使用1-3个emoji表情符号增强亲和力，不要过量\n"
                 + "- 不要提及\"作为一个AI\"、\"根据系统提示\"、\"PLAN_READY\"等词汇\n"
                 + "- 格式标记[PLAN_READY]和JSON是内部使用，绝对不要向用户提及或展示\n"
-                + "- 前几轮以温和提问和倾听为主，信息足够后再自然引导到计划\n"
+                + "- 用户想快速开始时，优先给出初版计划，不要把聊天流程拖长\n"
                 + "- 生成计划时可以说\"我已经可以帮你整理一个初版计划了\"而不是\"输出\"\n"
                 + "- 保持回复简洁、可执行、有温度";
 
@@ -856,8 +881,8 @@ public class AiServiceImpl implements AiService {
     private String buildDirectionInstruction(String direction, String topic) {
         if ("BUILD".equalsIgnoreCase(direction)) {
             return "你正在帮助用户建立一个新习惯：" + topic
-                    + "。用户方向为养成(BUILD)。你需要逐步了解用户状态、可用时间，设定可量化目标，"
-                    + "确定追踪方式(复选框/倒计时/计数)，制定具体执行计划。";
+                    + "。用户方向为养成(BUILD)。你需要设定清晰、可执行的目标，"
+                    + "使用复选框打卡作为唯一追踪方式，制定具体执行计划。";
         } else {
             return "你正在帮助用户戒除一个习惯：" + topic
                     + "。用户方向为戒除(QUIT)。你需要了解习惯频率和严重程度，找到触发因素和替代方案，"
@@ -1038,7 +1063,8 @@ public class AiServiceImpl implements AiService {
         String fullSystemPrompt = assembleSystemPrompt(coachType, direction, request.getTopic(), userId, sceneKey);
         String directionLabel = "BUILD".equals(direction) ? "养成习惯" : "戒除习惯";
         String firstUserMessage = "我想建立一个新计划：" + request.getTopic()
-                + "。计划方向是" + directionLabel + "。请引导我逐步完成计划创建。";
+                + "。计划方向是" + directionLabel
+                + "。如果这些信息已经足够，请直接生成一个初版计划；只有缺少最基本目标时，再问我一个必要问题。";
         String sessionId = UUID.randomUUID().toString();
 
         PlanSessionData sessionData = new PlanSessionData();

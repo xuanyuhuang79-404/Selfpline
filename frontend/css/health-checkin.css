@@ -1,177 +1,323 @@
-/* === Health Check-in Page — Web Dashboard === */
+/* === Record Page — Body Metrics + Journal === */
 
-.checkin-page {
+.record-page {
     display: grid;
     gap: 18px;
     min-height: calc(100dvh - var(--top-nav-height) - 48px);
+    padding-bottom: 34px;
 }
 
-.checkin-header {
+.record-header {
     min-width: 0;
     padding: clamp(24px, 4vw, 36px);
-    border-radius: 34px;
+    border: 1px solid rgba(226, 229, 237, 0.72);
+    border-radius: 32px;
     background:
-        radial-gradient(circle at top right, rgba(46, 167, 223, 0.18), transparent 36%),
-        #fff;
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92)),
+        radial-gradient(circle at top right, rgba(139, 234, 60, 0.18), transparent 34%);
     box-shadow: var(--shadow-soft);
 }
 
-.checkin-header h1 {
+.record-header h1 {
     margin-bottom: 10px;
     font-size: clamp(32px, 4vw, 52px);
     line-height: 1.08;
-    font-weight: 800;
+    font-weight: 900;
     overflow-wrap: anywhere;
 }
 
-.checkin-header p:not(.page-kicker) {
-    max-width: 760px;
+.record-header p:not(.page-kicker) {
+    max-width: 780px;
     color: var(--color-text-secondary);
     overflow-wrap: anywhere;
 }
 
-.checkin-form {
+.record-metrics-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
 }
 
-.checkin-card {
+.record-metric-card {
     min-width: 0;
-    padding: clamp(18px, 2.4vw, 24px);
-    border: 1px solid rgba(226, 229, 237, 0.88);
-    border-radius: 30px;
-    background: rgba(255, 255, 255, 0.88);
+    padding: clamp(16px, 2vw, 20px);
+    border: 1px solid color-mix(in srgb, var(--metric-accent) 20%, #e5e7eb);
+    border-radius: 26px;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.86)),
+        color-mix(in srgb, var(--metric-accent) 7%, #fff);
     box-shadow: var(--shadow-soft);
     overflow: hidden;
 }
 
-.plan-checkin-card {
-    background:
-        radial-gradient(circle at top right, rgba(139, 234, 60, 0.14), transparent 32%),
-        #fff;
+.metric-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
 }
 
-.checkin-card h3 {
-    margin-bottom: 16px;
+.metric-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--metric-accent) 15%, #fff);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--metric-accent) 18%, transparent);
+}
+
+.metric-title {
     color: var(--color-text);
-    font-size: 18px;
+    font-size: 15px;
+    font-weight: 850;
+}
+
+.metric-main-value {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.metric-main-value strong {
+    color: var(--color-text);
+    font-size: clamp(30px, 4vw, 44px);
+    line-height: 1;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+}
+
+.metric-main-value span {
+    color: var(--color-text-secondary);
+    font-size: 14px;
     font-weight: 800;
-    line-height: 1.3;
+}
+
+.metric-slider {
+    width: 100%;
+    accent-color: var(--metric-accent);
+}
+
+.metric-controls {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.metric-controls span {
+    min-width: 0;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    text-align: center;
     overflow-wrap: anywhere;
 }
 
-.slider-group {
-    display: flex;
+.metric-stepper-btn {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--metric-accent) 24%, #e5e7eb);
+    border-radius: 16px;
+    background: #fff;
+    color: var(--metric-accent);
+    box-shadow: 0 8px 18px rgba(31, 41, 55, 0.06);
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
 }
 
-.slider-group input[type="range"] {
-    flex: 1;
-    min-width: 180px;
-    accent-color: var(--color-primary);
+.metric-stepper-btn:hover,
+.metric-stepper-btn:focus-visible {
+    outline: none;
+    background: color-mix(in srgb, var(--metric-accent) 10%, #fff);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 22px rgba(31, 41, 55, 0.09);
 }
 
-.slider-group .slider-value {
-    min-width: 68px;
-    padding: 8px 12px;
-    border-radius: var(--radius-pill);
-    background: var(--color-primary-soft);
+.metric-stepper-btn:active {
+    transform: scale(0.96);
+}
+
+.journal-card {
+    min-width: 0;
+    padding: clamp(18px, 2.4vw, 24px);
+    border: 1px solid rgba(226, 229, 237, 0.84);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at top right, rgba(46, 167, 223, 0.12), transparent 32%),
+        rgba(255, 255, 255, 0.92);
+    box-shadow: var(--shadow-soft);
+}
+
+.journal-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.journal-heading h2 {
     color: var(--color-text);
-    text-align: center;
+    font-size: clamp(20px, 2.3vw, 28px);
+    line-height: 1.18;
+    font-weight: 900;
+}
+
+.journal-heading p {
+    margin-top: 5px;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.journal-heading span {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    font-size: 12px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
 
-.plan-checklist,
-#planChecklist {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.plan-check-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    padding: 12px 14px;
+.journal-textarea {
+    width: 100%;
+    min-height: 150px;
+    resize: vertical;
+    padding: 16px 18px;
+    border: 1px solid rgba(214, 219, 228, 0.9);
     border-radius: 22px;
-    background: var(--color-surface);
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: var(--transition);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--color-text);
+    line-height: 1.7;
 }
 
-.plan-check-item:hover {
-    background: #fff;
-    border-color: var(--color-border);
+.record-submitted-card {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 18px 20px;
+    border: 1px solid rgba(203, 213, 225, 0.92);
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(241, 245, 249, 0.96), rgba(226, 232, 240, 0.82));
+    color: var(--color-text-secondary);
+    box-shadow: 0 12px 28px rgba(31, 41, 55, 0.06);
 }
 
-.plan-check-item .check-icon {
-    flex: 0 0 auto;
-    width: 30px;
-    height: 30px;
-    display: inline-flex;
+.record-submitted-card strong {
+    color: var(--color-text);
+    font-size: 17px;
+    font-weight: 900;
+}
+
+.record-submitted-card span {
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.record-page.record-submitted .record-metric-card,
+.record-page.record-submitted .journal-card {
+    border-color: rgba(203, 213, 225, 0.88);
+    background: rgba(248, 250, 252, 0.82);
+    box-shadow: none;
+}
+
+.record-page.record-submitted .metric-slider,
+.record-page.record-submitted .metric-stepper-btn,
+.record-page.record-submitted .journal-textarea {
+    cursor: not-allowed;
+}
+
+.record-page.record-submitted .journal-textarea {
+    background: rgba(241, 245, 249, 0.88);
+    color: var(--color-text-secondary);
+}
+
+.record-actions {
+    display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    color: var(--color-primary);
+    gap: 16px;
+    padding: 12px 0 8px;
+}
+
+.record-submit-btn {
+    width: min(100%, 260px);
+    min-height: 52px;
+}
+
+.record-reset-btn {
+    min-height: 44px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    font-weight: 800;
     cursor: pointer;
-    font-size: 24px;
+    transition: background var(--transition), color var(--transition);
 }
 
-.plan-check-item .plan-name {
-    flex: 1;
-    min-width: 0;
-    font-size: 14px;
-    overflow-wrap: anywhere;
+.record-reset-btn:hover,
+.record-reset-btn:focus-visible {
+    outline: none;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
 }
 
-.plan-check-item .plan-status {
-    flex: 0 0 auto;
-    max-width: 100px;
-    color: var(--color-text-muted);
-    font-size: 12px;
-    text-align: right;
-    overflow-wrap: anywhere;
-}
-
-.plan-check-item.is-done {
-    background: var(--color-build-soft);
-    border-color: rgba(139, 234, 60, 0.32);
-}
-
-.plan-check-placeholder {
-    padding: 12px;
-    color: var(--color-text-muted);
-    font-size: 14px;
-}
-
-#btn-submit-checkin {
-    grid-column: 1 / -1;
-    justify-self: start;
-    width: min(100%, 280px);
+.record-reset-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.54;
 }
 
 @media (min-width: 1180px) {
-    .checkin-form {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
-    .checkin-card:nth-of-type(5) {
-        grid-column: span 2;
+    .journal-card,
+    .record-actions {
+        width: 100%;
     }
 }
 
-@media (max-width: 520px) {
-    .slider-group input[type="range"] {
-        min-width: 100%;
+@media (max-width: 760px) {
+    .record-metrics-grid {
+        grid-template-columns: 1fr;
     }
 
-    #btn-submit-checkin {
+    .journal-heading,
+    .record-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .journal-heading span {
+        align-self: flex-start;
+    }
+
+    .record-submit-btn {
         width: 100%;
+    }
+}
+
+@media (max-width: 420px) {
+    .metric-controls {
+        grid-template-columns: 40px minmax(0, 1fr) 40px;
+        gap: 8px;
+    }
+
+    .metric-stepper-btn {
+        width: 40px;
+        height: 40px;
     }
 }

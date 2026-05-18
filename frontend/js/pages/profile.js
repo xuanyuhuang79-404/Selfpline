@@ -157,12 +157,34 @@ const ProfilePage = {
         const healthGoal = document.getElementById('editGoal')?.value;
         const medicalHistory = document.getElementById('editHistory')?.value;
         const btn = document.querySelector('.profile-edit-form .save-btn');
+
+        const heightValue = height?.trim();
+        const weightValue = weight?.trim();
+        const parsedHeight = heightValue ? Number(heightValue) : null;
+        const parsedWeight = weightValue ? Number(weightValue) : null;
+        if (heightValue && (Number.isNaN(parsedHeight) || parsedHeight < 50 || parsedHeight > 250)) {
+            Toast.show('身高范围50-250cm');
+            return;
+        }
+        if (weightValue && (Number.isNaN(parsedWeight) || parsedWeight < 20 || parsedWeight > 300)) {
+            Toast.show('体重范围20-300kg');
+            return;
+        }
+        if ((healthGoal || '').length > 100) {
+            Toast.show('健身目标最多100个字符');
+            return;
+        }
+        if ((medicalHistory || '').length > 2000) {
+            Toast.show('病史最多2000个字符');
+            return;
+        }
+
         if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
 
         try {
             await apiClient.put('/user/profile', {
-                height: height ? parseFloat(height) : null,
-                weight: weight ? parseFloat(weight) : null,
+                height: parsedHeight,
+                weight: parsedWeight,
                 healthGoal: healthGoal || '',
                 medicalHistory: medicalHistory || ''
             });

@@ -3,6 +3,7 @@ package com.selfpline.controller;
 import com.selfpline.common.Result;
 import com.selfpline.model.dto.request.LoginRequest;
 import com.selfpline.model.dto.request.RegisterRequest;
+import com.selfpline.model.dto.request.UpdateProfileRequest;
 import com.selfpline.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,7 @@ public class UserController {
 
     @PutMapping("/profile")
     public Result<Void> updateProfile(@RequestAttribute("userId") Long userId,
-                                       @Valid @RequestBody RegisterRequest request) {
+                                       @Valid @RequestBody UpdateProfileRequest request) {
         userService.updateProfile(userId, request);
         return Result.success();
     }

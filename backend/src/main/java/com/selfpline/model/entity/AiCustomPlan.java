@@ -18,6 +18,7 @@ public class AiCustomPlan {
     private Long userId;
     private PlanDirection planDirection;
     private String targetName;
+    private String shortName;
     private TrackingMode trackingMode;
     private String themeColor;
     private String icon;

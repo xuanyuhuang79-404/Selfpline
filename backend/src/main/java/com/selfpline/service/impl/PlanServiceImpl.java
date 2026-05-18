@@ -14,6 +14,7 @@ import com.selfpline.service.PlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -57,7 +58,8 @@ public class PlanServiceImpl implements PlanService {
                     .planId(planId)
                     .planDirection(plan.getPlanDirection() != null ? plan.getPlanDirection().getCode() : null)
                     .targetName(plan.getTargetName())
-                    .trackingMode(plan.getTrackingMode() != null ? plan.getTrackingMode().getCode() : null)
+                    .shortName(resolveShortName(plan.getShortName(), plan.getTargetName()))
+                    .trackingMode(TrackingMode.CHECKBOX.getCode())
                     .themeColor(plan.getThemeColor())
                     .icon(plan.getIcon())
                     .streakDays(streakDays)
@@ -108,7 +110,8 @@ public class PlanServiceImpl implements PlanService {
                 .planId(plan.getId())
                 .planDirection(plan.getPlanDirection() != null ? plan.getPlanDirection().getCode() : null)
                 .targetName(plan.getTargetName())
-                .trackingMode(plan.getTrackingMode() != null ? plan.getTrackingMode().getCode() : null)
+                .shortName(resolveShortName(plan.getShortName(), plan.getTargetName()))
+                .trackingMode(TrackingMode.CHECKBOX.getCode())
                 .themeColor(plan.getThemeColor())
                 .icon(plan.getIcon())
                 .planContent(plan.getPlanContent())
@@ -127,14 +130,18 @@ public class PlanServiceImpl implements PlanService {
             throw new IllegalArgumentException("计划不存在");
         }
 
+        LocalDate today = LocalDate.now();
+        boolean completed = Boolean.TRUE.equals(request.getIsCompleted());
+        BigDecimal actualValue = completed ? BigDecimal.ONE : BigDecimal.ZERO;
+
         PlanDailyLog existingLog = dailyLogMapper.findByPlanIdAndDate(
-                request.getPlanId(), request.getRecordDate());
+                request.getPlanId(), today);
 
         if (existingLog != null) {
             // update existing log
-            existingLog.setIsCompleted(request.getIsCompleted());
-            existingLog.setActualValue(request.getActualValue());
-            existingLog.setTargetValue(request.getTargetValue());
+            existingLog.setIsCompleted(completed);
+            existingLog.setActualValue(actualValue);
+            existingLog.setTargetValue(BigDecimal.ONE);
             existingLog.setNotes(request.getNotes());
             dailyLogMapper.updateById(existingLog);
         } else {
@@ -142,10 +149,10 @@ public class PlanServiceImpl implements PlanService {
             PlanDailyLog newLog = new PlanDailyLog();
             newLog.setPlanId(request.getPlanId());
             newLog.setUserId(userId);
-            newLog.setRecordDate(request.getRecordDate());
-            newLog.setIsCompleted(request.getIsCompleted());
-            newLog.setActualValue(request.getActualValue());
-            newLog.setTargetValue(request.getTargetValue());
+            newLog.setRecordDate(today);
+            newLog.setIsCompleted(completed);
+            newLog.setActualValue(actualValue);
+            newLog.setTargetValue(BigDecimal.ONE);
             newLog.setNotes(request.getNotes());
             dailyLogMapper.insert(newLog);
         }
@@ -166,10 +173,10 @@ public class PlanServiceImpl implements PlanService {
             throw new IllegalArgumentException("计划名称不能为空");
         }
         plan.setTargetName(targetName);
+        plan.setShortName(resolveShortName(planData.get("shortName"), targetName));
 
-        // trackingMode: convert Integer code to enum
-        Integer trackingModeCode = toInteger(planData.get("trackingMode"));
-        plan.setTrackingMode(intToTrackingMode(trackingModeCode));
+        // 当前阶段统一使用 checkbox 打卡，避免首页和详情页记录模式不一致。
+        plan.setTrackingMode(TrackingMode.CHECKBOX);
 
         // themeColor (default "#4CAF50")
         String themeColor = (String) planData.get("themeColor");
@@ -213,7 +220,8 @@ public class PlanServiceImpl implements PlanService {
         if (plan == null || !plan.getUserId().equals(userId)) {
             throw new IllegalArgumentException("计划不存在");
         }
-        List<PlanDailyLog> logs = dailyLogMapper.findByPlanIdAndDateRange(planId, startDate, endDate);
+        LocalDate today = LocalDate.now();
+        List<PlanDailyLog> logs = dailyLogMapper.findByPlanIdAndDateRange(planId, today, today);
         return logs.stream()
                 .map(log -> DailyLogItem.builder()
                         .recordDate(log.getRecordDate() != null ? log.getRecordDate().toString() : null)
@@ -275,17 +283,14 @@ public class PlanServiceImpl implements PlanService {
         return Math.round(percent * 100.0) / 100.0;
     }
 
-    /**
-     * Convert Integer code to TrackingMode enum.
-     * 1=CHECKBOX, 2=TIMER, 3=COUNTER, default CHECKBOX.
-     */
-    private TrackingMode intToTrackingMode(Integer code) {
-        if (code == null) return TrackingMode.CHECKBOX;
-        return switch (code) {
-            case 2 -> TrackingMode.TIMER;
-            case 3 -> TrackingMode.COUNTER;
-            default -> TrackingMode.CHECKBOX;
-        };
+    private String resolveShortName(Object shortName, String targetName) {
+        String rawShortName = shortName instanceof String text ? text : null;
+        String value = rawShortName != null && !rawShortName.isBlank() ? rawShortName.trim() : targetName;
+        if (value == null || value.isBlank()) {
+            return "未命名计划";
+        }
+        String normalized = value.trim();
+        return normalized.length() > 40 ? normalized.substring(0, 40) : normalized;
     }
 
     /**

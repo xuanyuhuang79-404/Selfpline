@@ -1,19 +1,23 @@
 // 习惯卡片组件
 const HabitCard = {
+    pendingPlans: new Set(),
+
     render(plan) {
         const directionClass = plan.planDirection === 1 ? 'build' : 'quit';
         const badgeIcon = plan.planDirection === 1 ? '🌱' : '🚫';
         const accentColor = plan.themeColor || (plan.planDirection === 1 ? '#8BEA3C' : '#E9340B');
-        const targetName = this.escapeHtml(plan.targetName || '未命名计划');
+        const displayName = this.escapeHtml(plan.shortName || plan.targetName || '未命名计划');
+        const fullName = this.escapeHtml(plan.targetName || plan.shortName || '未命名计划');
         const icon = this.escapeHtml(plan.icon || '📋');
 
         return `
-            <div class="habit-card ${directionClass}"
+            <div class="habit-card ${directionClass}${plan.todayCompleted ? ' completed' : ''}"
                  style="--card-accent: ${accentColor};"
+                 title="${fullName}"
                  onclick="HabitCard.onClick(${plan.planId})">
                 <span class="card-icon">${icon}</span>
                 <div class="card-info">
-                    <div class="card-name">${targetName}</div>
+                    <div class="card-name">${displayName}</div>
                     <div class="card-streak">🔥 ${plan.streakDays || 0} 天连续</div>
                 </div>
                 <span class="card-badge">${badgeIcon}</span>
@@ -24,16 +28,9 @@ const HabitCard = {
     },
 
     renderAction(plan) {
-        switch (plan.trackingMode) {
-            case 1:
-                return `<button type="button" class="card-action checkbox-action" title="快速打卡" aria-label="快速打卡" onclick="event.stopPropagation(); HabitCard.quickCheck(${plan.planId})">${plan.todayCompleted ? '✓' : '○'}</button>`;
-            case 2:
-                return `<button type="button" class="card-action timer-action" title="开始计时" aria-label="开始计时" onclick="event.stopPropagation(); HabitCard.startTimer(${plan.planId})">▶</button>`;
-            case 3:
-                return `<button type="button" class="card-action counter-action" title="快速加一" aria-label="快速加一" onclick="event.stopPropagation(); HabitCard.increment(${plan.planId})">+</button>`;
-            default:
-                return '';
-        }
+        const completed = Boolean(plan.todayCompleted);
+        const disabled = this.pendingPlans.has(plan.planId) ? 'disabled' : '';
+        return `<button type="button" class="card-action checkbox-action${completed ? ' checked' : ''}" ${disabled} title="${completed ? '取消今日完成' : '今日完成'}" aria-label="${completed ? '取消今日完成' : '今日完成'}" onclick="event.stopPropagation(); HabitCard.quickCheck(${plan.planId}, ${completed}, event.currentTarget)">${completed ? '✓' : '○'}</button>`;
     },
 
     onClick(planId) {
@@ -41,49 +38,30 @@ const HabitCard = {
         PageRouter.navigate('plan-detail', { planId });
     },
 
-    async quickCheck(planId) {
+    async quickCheck(planId, currentCompleted = false, button) {
+        if (this.pendingPlans.has(planId)) return;
+        const nextCompleted = !currentCompleted;
+        this.pendingPlans.add(planId);
+        if (button) button.disabled = true;
+
         try {
             await apiClient.post('/plan/daily-log', {
                 planId: planId,
-                recordDate: new Date().toISOString().split('T')[0],
-                isCompleted: true,
-                actualValue: 1,
+                isCompleted: nextCompleted,
+                actualValue: nextCompleted ? 1 : 0,
                 targetValue: 1,
                 notes: '快速打卡'
             });
-            Toast.show('打卡成功！');
+            Toast.show(nextCompleted ? '今日计划已完成' : '今日计划已取消完成');
             // Refresh cards to show updated state
             if (typeof HomePage !== 'undefined' && HomePage.loadCards) {
                 HomePage.loadCards();
             }
         } catch (e) {
-            Toast.show('打卡失败: ' + e.message);
-        }
-    },
-
-    startTimer(planId) {
-        // Navigate to plan detail page which has the full timer
-        PageRouter.navigate('plan-detail', { planId: planId });
-    },
-
-    async increment(planId) {
-        try {
-            // Quick increment: add 1 to today's counter
-            await apiClient.post('/plan/daily-log', {
-                planId: planId,
-                recordDate: new Date().toISOString().split('T')[0],
-                isCompleted: true,
-                actualValue: 1,
-                targetValue: 1,
-                notes: '快速打卡'
-            });
-            Toast.show('+1');
-            // Refresh the dashboard to update card display
-            if (typeof HomePage !== 'undefined' && HomePage.loadCards) {
-                HomePage.loadCards();
-            }
-        } catch (e) {
-            Toast.show('操作失败: ' + e.message);
+            Toast.show('计划操作失败: ' + e.message);
+            if (button) button.disabled = false;
+        } finally {
+            this.pendingPlans.delete(planId);
         }
     },
 

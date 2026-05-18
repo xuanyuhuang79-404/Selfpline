@@ -5,6 +5,7 @@ import com.selfpline.dao.SysNotificationMapper;
 import com.selfpline.dao.SysUserMapper;
 import com.selfpline.model.dto.request.LoginRequest;
 import com.selfpline.model.dto.request.RegisterRequest;
+import com.selfpline.model.dto.request.UpdateProfileRequest;
 import com.selfpline.model.dto.response.LoginResponse;
 import com.selfpline.model.entity.SysNotification;
 import com.selfpline.model.entity.SysUser;
@@ -64,7 +65,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void updateProfile(Long userId, RegisterRequest request) {
+    public void updateProfile(Long userId, UpdateProfileRequest request) {
         SysUser user = userMapper.selectById(userId);
         if (user == null) {
             throw new IllegalArgumentException("用户不存在");

@@ -64,7 +64,7 @@ const PageRouter = {
             'ai-coach-chat': ['AI 指导师', '选择身份风格并开始对话'],
             'ai-classroom': ['创建计划', 'Build / Quit 下细化你的执行方案'],
             'plan-detail': ['计划详情', '记录、复盘与调整'],
-            health: ['健康打卡', '同步身体状态与执行情况'],
+            health: ['记录', '身体状态与今日小记'],
             community: ['运动社区', '分享执行现场'],
             profile: ['个人中心', '档案、统计与通知']
         };

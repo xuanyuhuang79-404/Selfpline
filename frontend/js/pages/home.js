@@ -26,16 +26,21 @@ const HomePage = {
 
                 <section class="dashboard-card week-panel">
                     <div class="section-heading">
-                        <h2>本周节奏</h2>
-                        <span>按天查看计划分布</span>
+                        <h2>本周执行能量</h2>
+                        <span>7 天节奏图</span>
+                    </div>
+                    <div class="week-energy-summary" id="week-energy-summary"></div>
+                    <div class="week-energy-bar" aria-label="今日完成率">
+                        <span id="week-energy-fill"></span>
                     </div>
                     <div class="week-strip" id="week-strip"></div>
+                    <p class="week-panel-note" id="week-panel-note"></p>
                 </section>
 
                 <section class="dashboard-card habit-panel">
                     <div class="section-heading">
                         <h2>今日计划</h2>
-                        <span id="habit-count-label">加载中...</span>
+                        <span id="habit-count-label">每个计划在这里完成打卡</span>
                     </div>
                     <div class="habit-cards-list" id="habit-cards-list">
                         <div class="panel-loading">加载中...</div>
@@ -84,7 +89,7 @@ const HomePage = {
             </div>
         `;
 
-        this.renderWeekStrip();
+        this.renderWeekRhythm(null);
         this.renderAiEntryCard();
         await this.loadCards();
     },
@@ -150,9 +155,61 @@ const HomePage = {
         return `${month}-${day} ${hour}:${minute}`;
     },
 
-    renderWeekStrip() {
+    renderWeekRhythm(cards) {
         const strip = document.getElementById('week-strip');
+        const summary = document.getElementById('week-energy-summary');
+        const fill = document.getElementById('week-energy-fill');
+        const note = document.getElementById('week-panel-note');
         if (!strip) return;
+
+        if (!Array.isArray(cards)) {
+            if (summary) summary.innerHTML = '<div class="week-summary-loading">正在读取今日计划...</div>';
+            if (fill) fill.style.width = '0%';
+            strip.innerHTML = '<div class="panel-loading">加载中...</div>';
+            if (note) note.textContent = '';
+            return;
+        }
+
+        const total = cards.length;
+        const done = cards.filter(card => card.todayCompleted).length;
+        const percent = total ? Math.round((done / total) * 100) : 0;
+        const maxStreak = total ? Math.max(...cards.map(card => Number(card.streakDays) || 0)) : 0;
+
+        if (summary) {
+            summary.innerHTML = `
+                <div class="week-summary-item">
+                    <span>今日完成</span>
+                    <strong>${done}/${total}</strong>
+                </div>
+                <div class="week-summary-item">
+                    <span>今日完成率</span>
+                    <strong>${percent}%</strong>
+                </div>
+                <div class="week-summary-item">
+                    <span>本周推进</span>
+                    <strong>${total ? `${total} 个计划` : '--'}</strong>
+                </div>
+                <div class="week-summary-item">
+                    <span>连续状态</span>
+                    <strong>${maxStreak} 天</strong>
+                </div>
+            `;
+        }
+        if (fill) fill.style.width = `${percent}%`;
+        if (note) note.textContent = total ? '今日完成率为实时数据，其余日期展示当前计划分布。' : '';
+
+        if (total === 0) {
+            strip.classList.add('empty');
+            strip.innerHTML = `
+                <div class="week-rhythm-empty">
+                    <strong>本周还没有节奏图</strong>
+                    <span>先创建一个计划，今天推进一个最小动作。</span>
+                    <button type="button" onclick="BottomSheet.show()">创建计划</button>
+                </div>
+            `;
+            return;
+        }
+        strip.classList.remove('empty');
 
         const today = new Date();
         const dayOfWeek = today.getDay();
@@ -167,13 +224,23 @@ const HomePage = {
             date.setDate(monday.getDate() + i);
             const isToday = date.toDateString() === today.toDateString();
             const dateStr = String(date.getDate()).padStart(2, '0');
-            const isoDate = date.toISOString().split('T')[0];
+            const isoDate = this.formatLocalDate(date);
+            const barHeight = isToday ? Math.max(percent, done > 0 ? 16 : 8) : Math.min(76, 20 + total * 8);
 
             html += `
-                <div class="week-day${isToday ? ' today' : ''}" data-date="${isoDate}">
-                    <span class="day-label">${dayNames[i]}</span>
-                    <span class="day-date">${dateStr}</span>
-                    <div class="dots"></div>
+                <div class="rhythm-day-card${isToday ? ' today' : ''}" data-date="${isoDate}">
+                    <div class="rhythm-day-top">
+                        <span class="day-label">周${dayNames[i]}</span>
+                        <strong class="day-date">${dateStr}</strong>
+                    </div>
+                    <div class="rhythm-energy-track">
+                        <span style="height:${barHeight}%"></span>
+                    </div>
+                    <div class="rhythm-day-copy">
+                        <span>${isToday ? `已完成 ${done}/${total}` : `计划 ${total}`}</span>
+                        <small>${isToday ? `完成率 ${percent}%` : '计划分布'}</small>
+                    </div>
+                    <div class="rhythm-plan-dots">${this.renderPlanDots(cards)}</div>
                 </div>
             `;
         }
@@ -188,6 +255,7 @@ const HomePage = {
             const result = await apiClient.get('/plan/dashboard');
             const cards = result.data || [];
             this.renderSummary(cards);
+            this.renderWeekRhythm(cards);
 
             if (cards.length === 0) {
                 container.innerHTML = `
@@ -197,15 +265,14 @@ const HomePage = {
                         <div class="empty-desc">从一个清晰的计划目标开始。</div>
                         <button class="empty-cta create-plan-plus" aria-label="创建新计划" onclick="BottomSheet.show()">+</button>
                     </div>`;
-                document.querySelectorAll('.dots').forEach(d => { d.innerHTML = ''; });
                 return;
             }
 
             container.innerHTML = cards.map(card => HabitCard.render(card)).join('')
                 + '<button type="button" class="create-plan-plus habit-create-plus" aria-label="创建新计划" onclick="BottomSheet.show()">+</button>';
-            this.populateWeekDots(cards);
         } catch (e) {
             this.renderSummary([]);
+            this.renderWeekRhythm([]);
             container.innerHTML = `<div class="empty-state"><div class="empty-icon">😵</div><div class="empty-title">加载失败</div><div class="empty-desc">${this.escapeHtml(e.message || '请稍后重试或检查后端服务')}</div></div>`;
         }
     },
@@ -231,24 +298,21 @@ const HomePage = {
         });
     },
 
-    populateWeekDots(cards) {
-        const dayElements = document.querySelectorAll('.week-day');
-        dayElements.forEach(dayEl => {
-            const dotsContainer = dayEl.querySelector('.dots');
-            if (!dotsContainer) return;
-            dotsContainer.innerHTML = '';
-            cards.forEach(card => {
-                const dot = document.createElement('span');
-                if (dayEl.classList.contains('today')) {
-                    dot.className = 'dot active';
-                    dot.style.background = card.themeColor || '#8BEA3C';
-                } else {
-                    dot.className = 'dot';
-                }
-                dot.title = card.targetName;
-                dotsContainer.appendChild(dot);
-            });
-        });
+    renderPlanDots(cards) {
+        return cards.slice(0, 8).map(card => `
+            <span title="${this.escapeHtml(card.shortName || card.targetName || '计划')}" style="background:${this.getSafeColor(card.themeColor)}"></span>
+        `).join('') + (cards.length > 8 ? `<em>+${cards.length - 8}</em>` : '');
+    },
+
+    getSafeColor(color) {
+        return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color || '') ? color : '#8BEA3C';
+    },
+
+    formatLocalDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     },
 
     escapeHtml(text) {

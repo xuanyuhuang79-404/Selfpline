@@ -61,10 +61,9 @@ const PlanDetailPage = {
         try {
             const result = await apiClient.get(`/plan/${this.planId}/detail`);
             this.planData = result.data;
-            this.trackingMode = result.data.trackingMode;
+            this.trackingMode = 1;
             this.renderContent();
-            // Load today's log
-            this.loadLogForDate(new Date().toISOString().split('T')[0]);
+            await this.loadTodayLog();
         } catch (e) {
             Toast.show('加载失败: ' + e.message);
             const content = document.getElementById('plan-detail-content');
@@ -131,6 +130,7 @@ const PlanDetailPage = {
         const dirColor = p.planDirection === 1 ? 'var(--color-build)' : 'var(--color-quit)';
         const dirBg = p.planDirection === 1 ? 'var(--color-build-soft)' : 'var(--color-quit-soft)';
         const completionRate = Number.isFinite(Number(p.completionRate)) ? Number(p.completionRate) : 0;
+        const shortName = p.shortName || p.targetName || '未命名计划';
 
         document.getElementById('plan-detail-content').innerHTML = `
             <div class="detail-back-row">
@@ -140,19 +140,16 @@ const PlanDetailPage = {
             <div class="plan-detail-grid">
                 <section class="plan-detail-header">
                     <div class="plan-icon">${this.escapeHtml(p.icon || '📋')}</div>
-                    <div class="plan-name">${this.escapeHtml(p.targetName || '未命名计划')}</div>
+                    <div class="plan-name">${this.escapeHtml(shortName)}</div>
+                    ${p.targetName && p.targetName !== shortName ? `<div class="plan-full-name">${this.escapeHtml(p.targetName)}</div>` : ''}
                     <span class="streak-badge" style="background:${dirBg};color:${dirColor}">${dirLabel}</span>
                     <div class="plan-meta">🔥 连续 <strong>${p.streakDays || 0}</strong> 天 · 完成率 <strong>${(completionRate * 100).toFixed(0)}%</strong></div>
                 </section>
 
                 <section class="daily-record-section">
                     <h3>📅 今日活动记录</h3>
-                    <div class="date-picker-row">
-                        <input type="date" id="recordDatePicker" value="${new Date().toISOString().split('T')[0]}" onchange="PlanDetailPage.loadLogForDate(this.value)">
-                    </div>
                     <div class="tracker-component" id="trackerContainer"></div>
                     <textarea class="notes-input" id="plan-notes" placeholder="记录今日心得..."></textarea>
-                    <button class="btn btn-primary detail-save-btn" onclick="DailyTracker.submitLog(true)">保存记录</button>
                 </section>
 
                 <section class="daily-record-section plan-content-section">
@@ -169,17 +166,18 @@ const PlanDetailPage = {
         DailyTracker.init(this.planId, this.trackingMode);
     },
 
-    async loadLogForDate(dateStr) {
+    async loadTodayLog() {
         const trackerContainer = document.getElementById('trackerContainer') || document.getElementById('tracker-container');
         if (!trackerContainer) return;
 
+        const today = new Date().toISOString().split('T')[0];
         try {
-            const result = await apiClient.get(`/plan/${this.planId}/daily-logs?startDate=${dateStr}&endDate=${dateStr}`);
+            const result = await apiClient.get(`/plan/${this.planId}/daily-logs?startDate=${today}&endDate=${today}`);
             const logs = result.data || [];
             const existingLog = logs.length > 0 ? logs[0] : null;
 
             // Re-initialize tracker with existing log data
-            DailyTracker.init(this.planId, this.trackingMode, existingLog);
+            DailyTracker.init(this.planId, 1, existingLog);
 
             // If there's a notes field, populate it
             const notesEl = document.getElementById('plan-notes');
@@ -190,7 +188,7 @@ const PlanDetailPage = {
             }
         } catch (e) {
             // If no logs found, init with empty
-            DailyTracker.init(this.planId, this.trackingMode, null);
+            DailyTracker.init(this.planId, 1, null);
         }
     },
 
