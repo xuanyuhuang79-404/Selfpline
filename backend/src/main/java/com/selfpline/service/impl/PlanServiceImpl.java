@@ -108,7 +108,6 @@ public class PlanServiceImpl implements PlanService {
                         .isCompleted(log.getIsCompleted())
                         .actualValue(log.getActualValue() != null ? log.getActualValue().doubleValue() : null)
                         .targetValue(log.getTargetValue() != null ? log.getTargetValue().doubleValue() : null)
-                        .notes(log.getNotes())
                         .build())
                 .collect(Collectors.toList());
 
@@ -213,7 +212,6 @@ public class PlanServiceImpl implements PlanService {
             existingLog.setIsCompleted(completed);
             existingLog.setActualValue(actualValue);
             existingLog.setTargetValue(BigDecimal.ONE);
-            existingLog.setNotes(request.getNotes());
             dailyLogMapper.updateById(existingLog);
         } else {
             // create new log
@@ -224,7 +222,6 @@ public class PlanServiceImpl implements PlanService {
             newLog.setIsCompleted(completed);
             newLog.setActualValue(actualValue);
             newLog.setTargetValue(BigDecimal.ONE);
-            newLog.setNotes(request.getNotes());
             dailyLogMapper.insert(newLog);
         }
     }
@@ -299,7 +296,6 @@ public class PlanServiceImpl implements PlanService {
                         .isCompleted(log.getIsCompleted())
                         .actualValue(log.getActualValue() != null ? log.getActualValue().doubleValue() : null)
                         .targetValue(log.getTargetValue() != null ? log.getTargetValue().doubleValue() : null)
-                        .notes(log.getNotes())
                         .build())
                 .collect(Collectors.toList());
     }

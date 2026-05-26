@@ -1,14 +1,11 @@
 package com.selfpline.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.selfpline.dao.HealthDailyRecordMapper;
-import com.selfpline.dao.SysNotificationMapper;
 import com.selfpline.dao.SysUserMapper;
 import com.selfpline.model.dto.request.LoginRequest;
 import com.selfpline.model.dto.request.RegisterRequest;
 import com.selfpline.model.dto.request.UpdateProfileRequest;
 import com.selfpline.model.dto.response.LoginResponse;
-import com.selfpline.model.entity.SysNotification;
 import com.selfpline.model.entity.SysUser;
 import com.selfpline.model.entity.HealthDailyRecord;
 import com.selfpline.service.UserService;
@@ -17,15 +14,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final SysUserMapper userMapper;
     private final HealthDailyRecordMapper healthRecordMapper;
-    private final SysNotificationMapper notificationMapper;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
@@ -41,6 +35,7 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setHeight(request.getHeight());
         user.setWeight(request.getWeight());
+        user.setHealthGoal(request.getHealthGoal());
         user.setMedicalHistory(request.getMedicalHistory());
 
         userMapper.insert(user);
@@ -81,19 +76,20 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("用户不存在");
         }
 
-        user.setHeight(request.getHeight());
-        user.setWeight(request.getWeight());
-        user.setMedicalHistory(request.getMedicalHistory());
+        if (request.getHeight() != null) {
+            user.setHeight(request.getHeight());
+        }
+        if (request.getHealthGoal() != null) {
+            user.setHealthGoal(request.getHealthGoal().trim());
+        }
+        if (request.getMedicalHistory() != null) {
+            user.setMedicalHistory(request.getMedicalHistory());
+        }
+        if (request.getAiPreferencePrompt() != null) {
+            String prompt = request.getAiPreferencePrompt().trim();
+            user.setAiPreferencePrompt(prompt);
+        }
 
         userMapper.updateById(user);
-    }
-
-    @Override
-    public List<SysNotification> getNotifications(Long userId) {
-        LambdaQueryWrapper<SysNotification> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysNotification::getUserId, userId)
-               .orderByDesc(SysNotification::getCreateTime)
-               .last("LIMIT 30");
-        return notificationMapper.selectList(wrapper);
     }
 }

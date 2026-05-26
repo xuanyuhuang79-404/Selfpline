@@ -44,7 +44,7 @@ const DashboardPage = {
                     <article class="workspace-card dashboard-ai-card">
                         <div class="section-heading">
                             <h2>AI 今日建议</h2>
-                            <span>下一步</span>
+                            <span>Today</span>
                         </div>
                         <div id="dashboard-ai-suggestion" class="dashboard-ai-suggestion">
                             <div class="panel-loading">加载中...</div>
@@ -74,14 +74,25 @@ const DashboardPage = {
                     </article>
                 </section>
 
-                <section class="workspace-card dashboard-plan-summary">
-                    <div class="section-heading">
-                        <h2>计划健康度</h2>
-                        <span>管理摘要</span>
-                    </div>
-                    <div id="dashboard-plan-summary" class="dashboard-plan-summary-body">
-                        <div class="panel-loading">加载中...</div>
-                    </div>
+                <section class="dashboard-summary-grid">
+                    <article class="workspace-card dashboard-data-summary">
+                        <div class="section-heading">
+                            <h2>数据统计</h2>
+                            <span>Analytics</span>
+                        </div>
+                        <div id="dashboard-data-summary" class="dashboard-plan-summary-body">
+                            <div class="panel-loading">加载中...</div>
+                        </div>
+                    </article>
+                    <article class="workspace-card dashboard-plan-summary">
+                        <div class="section-heading">
+                            <h2>计划管理</h2>
+                            <span>Plans</span>
+                        </div>
+                        <div id="dashboard-plan-summary" class="dashboard-plan-summary-body">
+                            <div class="panel-loading">加载中...</div>
+                        </div>
+                    </article>
                 </section>
 
                 <section class="dashboard-community-banner" id="dashboard-community-banner">
@@ -116,6 +127,7 @@ const DashboardPage = {
             this.renderAiSuggestion(summary, todayRecord, healthSummary);
             this.renderTodayRecord(todayRecord);
             this.renderRecentRecords(this.analytics.recentRecords || []);
+            this.renderDataSummary(summary, healthSummary, todayRecord);
             this.renderPlanSummary(summary);
             this.renderCommunitySummary(this.analytics.community || {});
         } catch (e) {
@@ -125,6 +137,7 @@ const DashboardPage = {
             document.getElementById('dashboard-ai-suggestion').innerHTML = `<div class="workspace-empty-mini"><strong>暂时无法生成建议</strong><span>${message}</span></div>`;
             document.getElementById('dashboard-record-status').innerHTML = `<div class="workspace-empty-mini"><strong>记录状态加载失败</strong></div>`;
             document.getElementById('dashboard-recent-records').innerHTML = `<div class="workspace-empty-mini"><strong>最近记录加载失败</strong></div>`;
+            document.getElementById('dashboard-data-summary').innerHTML = `<div class="workspace-empty-mini"><strong>数据摘要加载失败</strong></div>`;
             document.getElementById('dashboard-plan-summary').innerHTML = `<div class="workspace-empty-mini"><strong>计划摘要加载失败</strong></div>`;
             document.getElementById('dashboard-community-banner').innerHTML = `<strong>Community 暂时不可用</strong><span>${message}</span>`;
         }
@@ -286,10 +299,13 @@ const DashboardPage = {
         }
         container.innerHTML = `
             <div class="dashboard-record-grid">
-                ${this.renderRecordMetric('步数', record.steps ?? '--', '步', '👟')}
-                ${this.renderRecordMetric('锻炼', record.exerciseMinutes ?? '--', 'min', '🏋️')}
+                ${this.renderRecordMetric('步数', this.valueOrDash(record.steps), '步', '👟')}
+                ${this.renderRecordMetric('锻炼', this.valueOrDash(record.exerciseMinutes), 'min', '🏋️')}
+                ${this.renderRecordMetric('睡眠', this.valueOrDash(record.sleepHours), 'h', '🌙')}
+                ${this.renderRecordMetric('体重', this.valueOrDash(record.currentWeight), 'kg', '⚖️')}
+                ${this.renderRecordMetric('摄入', this.valueOrDash(record.caloriesIntake), 'kcal', '🍽️')}
+                ${this.renderRecordMetric('消耗', this.valueOrDash(record.caloriesBurned), 'kcal', '🔥')}
                 ${this.renderRecordMetric('心情', this.formatStateLabel('moodLevel', record.moodLevel), '', '🙂')}
-                ${this.renderRecordMetric('精力', this.formatStateLabel('energyLevel', record.energyLevel), '', '⚡')}
                 ${this.renderRecordMetric('压力', this.formatStateLabel('stressLevel', record.stressLevel), '', '🧘')}
             </div>
             <button class="workspace-link-btn dashboard-full-width" type="button" onclick="PageRouter.navigate('records')">查看 Records</button>
@@ -319,6 +335,25 @@ const DashboardPage = {
         `).join('');
     },
 
+    renderDataSummary(summary, healthSummary, todayRecord) {
+        const container = document.getElementById('dashboard-data-summary');
+        if (!container) return;
+        const todayTotal = Number(summary.todayTotal || 0);
+        const todayDone = Math.min(Number(summary.todayDone || 0), todayTotal);
+        const todayRate = todayTotal ? Math.min(100, Math.round(todayDone / todayTotal * 100)) : 0;
+        container.innerHTML = `
+            <div class="dashboard-summary-metrics">
+                <div><strong>${todayRate}%</strong><span>今日完成率</span></div>
+                <div><strong>${healthSummary.avgSteps || 0}</strong><span>平均步数</span></div>
+                <div><strong>${healthSummary.bmi ?? '--'}</strong><span>BMI ${this.escapeHtml(healthSummary.bmiLabel || '暂无')}</span></div>
+                <div><strong>${todayRecord.healthRecordExists ? '已记录' : '未记录'}</strong><span>今日健康状态</span></div>
+            </div>
+            <div class="dashboard-summary-actions">
+                <button class="workspace-link-btn" type="button" onclick="PageRouter.navigate('analytics')">查看 Analytics</button>
+            </div>
+        `;
+    },
+
     renderPlanSummary(summary) {
         const container = document.getElementById('dashboard-plan-summary');
         if (!container) return;
@@ -331,7 +366,6 @@ const DashboardPage = {
             </div>
             <div class="dashboard-summary-actions">
                 <button class="workspace-link-btn" type="button" onclick="PageRouter.navigate('plans')">管理 Plans</button>
-                <button class="workspace-link-btn" type="button" onclick="PageRouter.navigate('analytics')">查看 Analytics</button>
             </div>
         `;
     },
@@ -357,6 +391,10 @@ const DashboardPage = {
                 <em>${this.escapeHtml(label)}</em>
             </div>
         `;
+    },
+
+    valueOrDash(value) {
+        return value === null || value === undefined || value === '' ? '--' : value;
     },
 
     renderLoadingCards(count) {

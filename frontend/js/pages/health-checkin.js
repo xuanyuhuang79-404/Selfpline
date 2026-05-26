@@ -399,6 +399,9 @@ const HealthCheckinPage = {
             this.updateDiaryCount();
             this.isSubmitted = false;
             this.applySubmittedState();
+            this.selectedDate = this.getTodayDate();
+            const selectedInput = document.getElementById('record-selected-date');
+            if (selectedInput) selectedInput.value = this.selectedDate;
             await this.loadHistoryAndSelected();
             Toast.show('今日记录已重置');
         } catch (e) {
@@ -537,11 +540,13 @@ const HealthCheckinPage = {
         const selectedInput = document.getElementById('record-selected-date');
         if (selectedInput && !selectedInput.value) selectedInput.value = this.selectedDate || this.getTodayDate();
         document.getElementById('record-date-apply')?.addEventListener('click', () => {
-            this.selectedDate = selectedInput?.value || this.getTodayDate();
+            this.selectedDate = this.normalizeDateString(selectedInput?.value) || this.getTodayDate();
+            if (selectedInput) selectedInput.value = this.selectedDate;
             this.loadSelectedRecord();
         });
         selectedInput?.addEventListener('change', () => {
-            this.selectedDate = selectedInput.value || this.getTodayDate();
+            this.selectedDate = this.normalizeDateString(selectedInput.value) || this.getTodayDate();
+            selectedInput.value = this.selectedDate;
             this.loadSelectedRecord();
         });
     },
@@ -578,8 +583,20 @@ const HealthCheckinPage = {
     async loadSelectedRecord() {
         const detail = document.getElementById('record-selected-detail');
         const selectedInput = document.getElementById('record-selected-date');
-        const date = selectedInput?.value || this.selectedDate || this.getTodayDate();
+        const date = this.normalizeDateString(selectedInput?.value || this.selectedDate || this.getTodayDate());
+        if (!date) {
+            if (detail) {
+                detail.innerHTML = `
+                    <div class="workspace-empty-mini">
+                        <strong>日期格式不正确</strong>
+                        <span>请选择 yyyy-MM-dd 格式的日期。</span>
+                    </div>
+                `;
+            }
+            return;
+        }
         this.selectedDate = date;
+        if (selectedInput) selectedInput.value = date;
         if (detail) detail.innerHTML = '<div class="panel-loading">加载中...</div>';
         try {
             const result = await apiClient.get('/record?recordDate=' + encodeURIComponent(date));
@@ -608,15 +625,14 @@ const HealthCheckinPage = {
             <article class="record-detail-card">
                 <div class="record-detail-head">
                     <strong>${this.escapeHtml(this.formatDisplayDate(record.recordDate || this.selectedDate))}</strong>
-                    <span>${record.healthRecordExists ? '身体记录已记录' : '仅有小记'}</span>
                 </div>
                 <div class="record-detail-grid">
-                    ${this.renderDetailMetric('体重', record.currentWeight ?? '--', 'kg')}
-                    ${this.renderDetailMetric('摄入', record.caloriesIntake ?? '--', 'kcal')}
-                    ${this.renderDetailMetric('消耗', record.caloriesBurned ?? '--', 'kcal')}
-                    ${this.renderDetailMetric('睡眠', record.sleepHours ?? '--', 'h')}
-                    ${this.renderDetailMetric('步数', record.steps ?? '--', '步')}
-                    ${this.renderDetailMetric('锻炼', record.exerciseMinutes ?? '--', 'min')}
+                    ${this.renderDetailMetric('体重', this.valueOrDash(record.currentWeight), 'kg')}
+                    ${this.renderDetailMetric('摄入', this.valueOrDash(record.caloriesIntake), 'kcal')}
+                    ${this.renderDetailMetric('消耗', this.valueOrDash(record.caloriesBurned), 'kcal')}
+                    ${this.renderDetailMetric('睡眠', this.valueOrDash(record.sleepHours), 'h')}
+                    ${this.renderDetailMetric('步数', this.valueOrDash(record.steps), '步')}
+                    ${this.renderDetailMetric('锻炼', this.valueOrDash(record.exerciseMinutes), 'min')}
                     ${this.renderDetailMetric('心情', this.formatStateLabel('moodLevel', record.moodLevel), '')}
                     ${this.renderDetailMetric('精力', this.formatStateLabel('energyLevel', record.energyLevel), '')}
                     ${this.renderDetailMetric('压力', this.formatStateLabel('stressLevel', record.stressLevel), '')}
@@ -650,40 +666,37 @@ const HealthCheckinPage = {
             return;
         }
         list.innerHTML = history.map(item => `
-            <button class="record-history-item" type="button" onclick="HealthCheckinPage.selectHistoryDate('${this.escapeAttr(this.formatDisplayDate(item.recordDate))}')">
+            <button class="record-history-item" type="button" onclick="HealthCheckinPage.selectHistoryDate('${this.escapeAttr(this.normalizeDateString(item.recordDate))}')">
                 <div>
                     <strong>${this.formatDisplayDate(item.recordDate)}</strong>
                     <span>${this.escapeHtml(item.diaryText || '没有小记')}</span>
                 </div>
                 <div class="record-history-metrics">
-                    <span>${item.steps ?? '--'} 步</span>
-                    <span>锻炼 ${item.exerciseMinutes ?? '--'}min</span>
+                    <span>${this.valueOrDash(item.steps)} 步</span>
+                    <span>锻炼 ${this.valueOrDash(item.exerciseMinutes)}min</span>
                     <span>心情 ${this.formatStateLabel('moodLevel', item.moodLevel)}</span>
                     <span>精力 ${this.formatStateLabel('energyLevel', item.energyLevel)}</span>
                     <span>压力 ${this.formatStateLabel('stressLevel', item.stressLevel)}</span>
-                    <span>${item.currentWeight ?? '--'}kg</span>
-                    <span>${item.sleepHours ?? '--'}h</span>
-                    <span>摄入 ${item.caloriesIntake ?? '--'}</span>
-                    <span>消耗 ${item.caloriesBurned ?? '--'}</span>
+                    <span>${this.valueOrDash(item.currentWeight)}kg</span>
+                    <span>${this.valueOrDash(item.sleepHours)}h</span>
+                    <span>摄入 ${this.valueOrDash(item.caloriesIntake)}</span>
+                    <span>消耗 ${this.valueOrDash(item.caloriesBurned)}</span>
                 </div>
             </button>
         `).join('');
     },
 
     selectHistoryDate(date) {
-        if (!date || date === '--') return;
-        this.selectedDate = date;
+        const normalized = this.normalizeDateString(date);
+        if (!normalized) return;
+        this.selectedDate = normalized;
         const selectedInput = document.getElementById('record-selected-date');
-        if (selectedInput) selectedInput.value = date;
+        if (selectedInput) selectedInput.value = normalized;
         this.loadSelectedRecord();
     },
 
     formatDisplayDate(dateValue) {
-        if (Array.isArray(dateValue)) {
-            const [year, month, day] = dateValue;
-            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        }
-        return this.escapeHtml(String(dateValue || '--'));
+        return this.normalizeDateString(dateValue) || '--';
     },
 
     formatLocalDate(date) {
@@ -709,6 +722,30 @@ const HealthCheckinPage = {
         const group = this.stateGroups.find(item => item.key === key);
         const option = group?.options.find(item => Number(item.value) === Number(value));
         return option ? option.label : '--';
+    },
+
+    normalizeDateString(dateValue) {
+        if (Array.isArray(dateValue)) {
+            const [year, month, day] = dateValue;
+            return this.isValidDateString(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`)
+                ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                : '';
+        }
+        const text = String(dateValue || '').trim();
+        if (!this.isValidDateString(text)) return '';
+        return text;
+    },
+
+    isValidDateString(text) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(text || '')) return false;
+        const date = new Date(`${text}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return false;
+        const [year, month, day] = text.split('-').map(Number);
+        return date.getFullYear() === year && date.getMonth() + 1 === month && date.getDate() === day;
+    },
+
+    valueOrDash(value) {
+        return value === null || value === undefined || value === '' ? '--' : value;
     },
 
     escapeHtml(text) {

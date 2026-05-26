@@ -20,7 +20,6 @@ public class PlanDailyLog {
     private Boolean isCompleted;
     private BigDecimal actualValue;
     private BigDecimal targetValue;
-    private String notes;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

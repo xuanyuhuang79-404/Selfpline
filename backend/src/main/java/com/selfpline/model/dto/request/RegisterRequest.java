@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -26,6 +27,9 @@ public class RegisterRequest {
     @DecimalMin(value = "20.0", message = "体重范围20-300kg")
     @DecimalMax(value = "300.0", message = "体重范围20-300kg")
     private BigDecimal weight;
+
+    @Size(max = 100, message = "健康目标最多100个字符")
+    private String healthGoal;
 
     @NotBlank(message = "病史不能为空，可填写“无”")
     private String medicalHistory;

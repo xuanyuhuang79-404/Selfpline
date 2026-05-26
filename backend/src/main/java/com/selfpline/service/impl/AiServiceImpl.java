@@ -82,6 +82,7 @@ public class AiServiceImpl implements AiService {
     private static final String DEFAULT_ASSIST_SCENE = "daily_checkin";
     private static final String DEFAULT_COACH_CHAT_SCENE = "coach_gentle_companion";
     private static final String DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
+    private static final String USER_PREFERENCE_SYSTEM_MARKER = "[SelfplineUserPreference]";
 
     private static final Map<String, String> SCENE_COACH_TYPE_MAP = Map.ofEntries(
             Map.entry("fat_loss_shaping", "FAT_LOSS_COACH"),
@@ -505,6 +506,7 @@ public class AiServiceImpl implements AiService {
         // 9-10. Add system and user messages to the data's messages list
         sessionData.getMessages().add(new ChatMessage("system", fullSystemPrompt));
         sessionData.getMessages().add(new ChatMessage("user", firstUserMessage));
+        applyUserPreference(sessionData.getMessages(), user);
 
         // 11. Create session in Redis or local fallback when Redis is disabled
         createPlanSession(sessionId, sessionData);
@@ -542,6 +544,7 @@ public class AiServiceImpl implements AiService {
         // 4. Get updated session, extract full messages list
         PlanSessionData updatedSession = getPlanSession(request.getSessionId());
         List<ChatMessage> messages = updatedSession != null ? updatedSession.getMessages() : session.getMessages();
+        applyUserPreference(messages, userMapper.selectById(userId));
 
         // 5. Call DeepSeek API
         String aiResponse = callDeepSeek(messages);
@@ -601,6 +604,7 @@ public class AiServiceImpl implements AiService {
         // 5. Build messages list: system + history + new user message
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage("system", systemPrompt));
+        applyUserPreference(messages, user);
         for (AiChatLog log : recentLogs) {
             messages.add(new ChatMessage("user", log.getUserMessage()));
             messages.add(new ChatMessage("assistant", log.getAiResponse()));
@@ -649,6 +653,7 @@ public class AiServiceImpl implements AiService {
 
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage("system", systemPrompt));
+        applyUserPreference(messages, user);
         for (AiChatLog log : recentLogs) {
             if (log.getUserMessage() != null && !log.getUserMessage().isBlank()) {
                 messages.add(new ChatMessage("user", log.getUserMessage()));
@@ -826,6 +831,38 @@ public class AiServiceImpl implements AiService {
         return ctx.endsWith(", ") ? ctx.substring(0, ctx.length() - 2) : ctx;
     }
 
+    private String buildUserPreferencePrompt(SysUser user) {
+        if (user == null || user.getAiPreferencePrompt() == null || user.getAiPreferencePrompt().isBlank()) {
+            return "";
+        }
+        return USER_PREFERENCE_SYSTEM_MARKER
+                + "\n用户在 Profile 中设置了全局 AI 个性化偏好。它用于影响回答风格、称呼、偏好和输出方式；"
+                + "必须服从 Selfpline 的安全边界、当前模块任务、必需输出结构、内部 JSON/标记规则与专业边界。"
+                + "如果用户偏好与模块任务冲突，保持任务必要结构，同时尽量遵循用户偏好的表达风格。\n"
+                + "用户偏好:\n" + user.getAiPreferencePrompt().trim();
+    }
+
+    private void applyUserPreference(List<ChatMessage> messages, SysUser user) {
+        if (messages == null) {
+            return;
+        }
+        messages.removeIf(message -> "system".equals(message.getRole())
+                && message.getContent() != null
+                && message.getContent().startsWith(USER_PREFERENCE_SYSTEM_MARKER));
+        String preferencePrompt = buildUserPreferencePrompt(user);
+        if (preferencePrompt.isBlank()) {
+            return;
+        }
+        int insertIndex = 0;
+        for (int i = 0; i < messages.size(); i++) {
+            if ("system".equals(messages.get(i).getRole())) {
+                insertIndex = i + 1;
+                break;
+            }
+        }
+        messages.add(insertIndex, new ChatMessage("system", preferencePrompt));
+    }
+
     private String assembleSystemPrompt(String coachType, String direction, String topic, Long userId, String sceneKey) {
         // 1. Get strategy
         AiCoachStrategy strategy = coachFactory.getStrategy(coachType);
@@ -980,10 +1017,7 @@ public class AiServiceImpl implements AiService {
                 .sorted(Comparator.comparing(PlanDailyLog::getRecordDate, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(log -> {
                     String status = Boolean.TRUE.equals(log.getIsCompleted()) ? "完成" : "未完成";
-                    String notes = log.getNotes() != null && !log.getNotes().isBlank()
-                            ? ", 备注:" + log.getNotes()
-                            : "";
-                    return log.getRecordDate() + ":" + status + notes;
+                    return log.getRecordDate() + ":" + status;
                 })
                 .collect(Collectors.joining("; "));
     }
@@ -1075,6 +1109,7 @@ public class AiServiceImpl implements AiService {
         sessionData.setUserId(userId);
         sessionData.getMessages().add(new ChatMessage("system", fullSystemPrompt));
         sessionData.getMessages().add(new ChatMessage("user", firstUserMessage));
+        applyUserPreference(sessionData.getMessages(), user);
         createPlanSession(sessionId, sessionData);
 
         // Send meta with sessionId immediately
@@ -1111,6 +1146,7 @@ public class AiServiceImpl implements AiService {
         addPlanSessionMessage(request.getSessionId(), new ChatMessage("user", request.getMessage()));
         PlanSessionData updatedSession = getPlanSession(request.getSessionId());
         List<ChatMessage> messages = updatedSession != null ? updatedSession.getMessages() : session.getMessages();
+        applyUserPreference(messages, userMapper.selectById(userId));
 
         String sceneKey = resolvePlanCreationSceneKey(
                 request.getSceneKey() != null ? request.getSceneKey() : session.getSceneKey(),
@@ -1166,6 +1202,7 @@ public class AiServiceImpl implements AiService {
 
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage("system", systemPrompt));
+        applyUserPreference(messages, user);
         for (AiChatLog log : recentLogs) {
             if (log.getUserMessage() != null && !log.getUserMessage().isBlank()) {
                 messages.add(new ChatMessage("user", log.getUserMessage()));
@@ -1216,6 +1253,7 @@ public class AiServiceImpl implements AiService {
 
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage("system", systemPrompt));
+        applyUserPreference(messages, user);
         for (AiChatLog log : recentLogs) {
             messages.add(new ChatMessage("user", log.getUserMessage()));
             messages.add(new ChatMessage("assistant", log.getAiResponse()));

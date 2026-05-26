@@ -4,6 +4,8 @@
 CREATE DATABASE IF NOT EXISTS selfpline DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE selfpline;
 
+DROP TABLE IF EXISTS sys_notification;
+
 -- 1. 用户档案表
 CREATE TABLE IF NOT EXISTS sys_user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -13,6 +15,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     weight DECIMAL(5,2) COMMENT '体重(kg)',
     health_goal VARCHAR(100) COMMENT '健身目标',
     medical_history TEXT COMMENT '病史',
+    ai_preference_prompt TEXT COMMENT '全局AI个性化提示词',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户档案表';
@@ -47,7 +50,6 @@ CREATE TABLE IF NOT EXISTS plan_daily_log (
     is_completed BOOLEAN DEFAULT FALSE,
     actual_value DECIMAL(10,2) COMMENT '实际完成量',
     target_value DECIMAL(10,2) COMMENT '目标量',
-    notes VARCHAR(500) COMMENT '备注/心得',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_plan_date (plan_id, record_date),
     INDEX idx_user_date (user_id, record_date),
@@ -156,19 +158,6 @@ CREATE TABLE IF NOT EXISTS community_comment (
     FOREIGN KEY (post_id) REFERENCES community_post(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区评论';
-
--- 11. 系统通知表
-CREATE TABLE IF NOT EXISTS sys_notification (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    notify_type TINYINT COMMENT '通知类型',
-    title VARCHAR(100),
-    content TEXT,
-    is_read BOOLEAN DEFAULT FALSE,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_read (user_id, is_read),
-    FOREIGN KEY (user_id) REFERENCES sys_user(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统通知';
 
 -- 预置 AI 教练数据
 INSERT INTO ai_coach_config (coach_key, coach_name, coach_avatar, coach_description, system_prompt, tags, sort_order) VALUES

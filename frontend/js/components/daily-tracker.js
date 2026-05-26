@@ -40,6 +40,9 @@ const DailyTracker = {
         try {
             await this.submitLog(next);
             Toast.show(next ? '今日计划已完成' : '今日计划已取消完成');
+            if (typeof PlanDetailPage !== 'undefined' && PlanDetailPage.handleTodayCheckChanged) {
+                PlanDetailPage.handleTodayCheckChanged(this.planId, next);
+            }
         } catch (e) {
             this.checked = previous;
             Toast.show('保存失败: ' + e.message);
@@ -50,14 +53,11 @@ const DailyTracker = {
     },
 
     async submitLog(isCompleted) {
-        const notesEl = document.getElementById('dailyNotes') || document.getElementById('plan-notes');
-        const notes = notesEl ? notesEl.value : '';
         await apiClient.post('/plan/daily-log', {
             planId: this.planId,
             isCompleted: isCompleted,
             actualValue: isCompleted ? 1 : 0,
-            targetValue: 1,
-            notes: notes
+            targetValue: 1
         });
     },
 

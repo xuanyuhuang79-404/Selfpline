@@ -121,7 +121,7 @@ const PageRouter = {
             records: ['Records', '记录'],
             analytics: ['Analytics', '完成率、连续天数与健康趋势'],
             community: ['Community', '社区'],
-            profile: ['Profile', '档案、通知与设置']
+            profile: ['Profile', '档案与设置']
         };
         const [title, subtitle] = titles[pageName] || titles.dashboard;
         const titleEl = document.querySelector('.nav-title');
@@ -156,12 +156,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (page) PageRouter.navigate(page);
         });
     });
-
-    // Bind top nav notification icon
-    const notifBtn = document.getElementById('btn-notifications');
-    if (notifBtn) {
-        notifBtn.addEventListener('click', () => PageRouter.navigate('profile'));
-    }
 
     // Bind profile button
     const profileBtn = document.getElementById('btn-profile');

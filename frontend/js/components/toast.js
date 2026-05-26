@@ -1,4 +1,4 @@
-// Toast 全局消息通知组件
+// Toast 全局消息组件
 const Toast = {
     show(message, duration = 2000) {
         const container = document.getElementById('toast-container');

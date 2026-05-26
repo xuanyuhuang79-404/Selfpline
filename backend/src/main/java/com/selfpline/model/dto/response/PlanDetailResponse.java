@@ -30,6 +30,5 @@ public class PlanDetailResponse {
         private Boolean isCompleted;
         private Double actualValue;
         private Double targetValue;
-        private String notes;
     }
 }

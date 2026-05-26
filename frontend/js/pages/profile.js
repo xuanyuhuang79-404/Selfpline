@@ -1,6 +1,7 @@
-// 个人中心设置页面
+// 个人中心：账号概览、AI 个性化与健康档案
 const ProfilePage = {
     user: null,
+    aiPreferenceLimit: 2000,
 
     async render() {
         document.getElementById('top-nav').classList.remove('hidden');
@@ -14,28 +15,16 @@ const ProfilePage = {
                     <div class="skeleton skeleton-text profile-skeleton-line short"></div>
                     <div class="skeleton skeleton-text profile-skeleton-line"></div>
                 </div>
-                <div class="profile-stats">
-                    <div class="profile-stat">
-                        <div class="skeleton skeleton-text profile-skeleton-line tiny"></div>
-                        <div class="skeleton skeleton-text profile-skeleton-line short"></div>
+                <div class="profile-main-grid">
+                    <div class="profile-section">
+                        <div class="skeleton skeleton-text profile-skeleton-line title"></div>
+                        <div class="skeleton skeleton-text profile-skeleton-line full"></div>
+                        <div class="skeleton skeleton-text profile-skeleton-line wide"></div>
                     </div>
-                    <div class="profile-stat">
-                        <div class="skeleton skeleton-text profile-skeleton-line tiny"></div>
-                        <div class="skeleton skeleton-text profile-skeleton-line short"></div>
+                    <div class="profile-section">
+                        <div class="skeleton skeleton-text profile-skeleton-line title"></div>
+                        <div class="skeleton skeleton-text profile-skeleton-line full"></div>
                     </div>
-                    <div class="profile-stat">
-                        <div class="skeleton skeleton-text profile-skeleton-line tiny"></div>
-                        <div class="skeleton skeleton-text profile-skeleton-line short"></div>
-                    </div>
-                </div>
-                <div class="profile-section">
-                    <div class="skeleton skeleton-text profile-skeleton-line title"></div>
-                    <div class="skeleton skeleton-text profile-skeleton-line full"></div>
-                    <div class="skeleton skeleton-text profile-skeleton-line wide"></div>
-                </div>
-                <div class="profile-section">
-                    <div class="skeleton skeleton-text profile-skeleton-line title"></div>
-                    <div class="skeleton skeleton-text profile-skeleton-line full"></div>
                 </div>
             </div>
         `;
@@ -46,28 +35,15 @@ const ProfilePage = {
     async loadProfile() {
         try {
             const userResult = await apiClient.get('/user/profile');
-            const user = userResult.data;
-            this.user = user;
-
-            let activePlanCount = 0;
-            try {
-                const plansResult = await apiClient.get('/plan/dashboard');
-                const plans = plansResult.data || [];
-                activePlanCount = Array.isArray(plans) ? plans.length : 0;
-            } catch (e) {
-                // Dashboard fetch失败时，计划数显示为0
-            }
-
-            const checkinDays = 0;
-
-            this.renderProfile(user, activePlanCount, checkinDays);
+            this.user = userResult.data || {};
+            this.renderProfile(this.user);
         } catch (e) {
             document.getElementById('page-container').innerHTML = `
                 <div class="profile-page">
                     <div class="empty-state">
                         <div class="empty-icon">😞</div>
                         <div class="empty-title">加载失败</div>
-                        <div class="empty-desc">${e.message}</div>
+                        <div class="empty-desc">${this.escapeHtml(e.message)}</div>
                         <button class="empty-cta" onclick="ProfilePage.render()">重试</button>
                     </div>
                 </div>
@@ -75,73 +51,77 @@ const ProfilePage = {
         }
     },
 
-    renderProfile(user, activePlanCount, checkinDays) {
+    renderProfile(user) {
         document.getElementById('page-container').innerHTML = `
-            <div class="profile-page">
-                <div class="profile-header">
+            <div class="profile-page profile-settings-page">
+                <aside class="profile-header">
                     <button class="profile-logout-inline" onclick="ProfilePage.logout()">退出登录</button>
                     <div class="profile-avatar">🏃</div>
-                    <h2 class="profile-username">${this.escapeHtml(user.username)}</h2>
+                    <h2 class="profile-username">${this.escapeHtml(user.username || 'Selfpline 用户')}</h2>
                     <p class="profile-join-date">加入于 ${this.formatDate(user.createdAt)}</p>
                     <div class="profile-identity-list">
-                        <span>Web 工作台用户</span>
-                        <span>健康档案已连接</span>
+                        <span>${user.healthGoal ? '目标已设置' : '目标待完善'}</span>
+                        <span>${user.aiPreferencePrompt ? '已启用个性化' : '默认回答风格'}</span>
                     </div>
-                </div>
-                <div class="profile-stats">
-                    <div class="profile-stat">
-                        <span class="stat-value">${activePlanCount}</span>
-                        <span class="stat-label">进行中计划</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="stat-value">${checkinDays || 0}</span>
-                        <span class="stat-label">累计打卡</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="stat-value">0</span>
-                        <span class="stat-label">当前成长值</span>
-                    </div>
-                </div>
-                <div class="profile-section profile-health-card">
-                    <h3 class="section-title">健康档案</h3>
-                    <div class="health-tags" id="health-tags-container">
-                        <div class="profile-health-grid">
-                            <div><span>身高</span><strong>${user.height || '--'}<small>cm</small></strong></div>
-                            <div><span>最新体重</span><strong>${user.weight || '--'}<small>kg</small></strong></div>
-                            <div class="profile-health-history"><span>病史</span><p>${this.escapeHtml(user.medicalHistory || '未填写')}</p></div>
+                </aside>
+
+                <main class="profile-main-grid">
+                    <section class="profile-section profile-ai-card">
+                        <div class="profile-section-head">
+                            <div>
+                                <p class="page-kicker">AI Personalization</p>
+                                <h3 class="section-title">全局 AI 个性化</h3>
+                                <p>它会影响 AI 回答风格、偏好和输出方式，但不能覆盖安全边界。</p>
+                            </div>
                         </div>
-                    </div>
-                    <button class="btn btn-text profile-edit-btn" onclick="ProfilePage.showEditForm()">编辑档案</button>
-                </div>
-                <div class="profile-section profile-settings-grid">
-                    <article>
-                        <h3 class="section-title">账号与安全</h3>
-                        <p>当前账号使用登录令牌保护。退出登录会清除本机令牌。</p>
-                        <button class="workspace-link-btn" type="button" onclick="ProfilePage.logout()">退出登录</button>
-                    </article>
-                    <article>
-                        <h3 class="section-title">使用偏好</h3>
-                        <p>偏好轻量记录、AI 计划生成和每日复盘工作流。</p>
-                    </article>
-                    <article>
-                        <h3 class="section-title">数据管理</h3>
-                        <p>健康记录按日期保存，同一天更新，不同日期独立保留。</p>
-                    </article>
-                    <article>
-                        <h3 class="section-title">成长值</h3>
-                        <p>当前成长值为 0，后续会接入更完整的积分规则。</p>
-                    </article>
-                </div>
-                <div class="profile-section">
-                    <h3 class="section-title">通知</h3>
-                    <div id="notificationList" class="notification-center">
-                        <div class="notification-empty">加载中...</div>
-                    </div>
-                </div>
+                        <textarea
+                            id="aiPreferencePrompt"
+                            class="profile-ai-textarea"
+                            maxlength="${this.aiPreferenceLimit}"
+                            placeholder="例如：请用简洁直接的语气回答；先给结论，再给步骤；称呼我为……">${this.escapeHtml(user.aiPreferencePrompt || '')}</textarea>
+                        <div class="profile-ai-footer">
+                            <span id="aiPreferenceCount">${(user.aiPreferencePrompt || '').length}/${this.aiPreferenceLimit}</span>
+                            <div>
+                                <button class="btn btn-text profile-reset-ai-btn" type="button" onclick="ProfilePage.resetAiPreference()">恢复默认</button>
+                                <button class="save-btn profile-save-ai-btn" type="button" onclick="ProfilePage.saveAiPreference()">保存</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="profile-section profile-health-card">
+                        <div class="profile-section-head">
+                            <div>
+                                <h3 class="section-title">健康档案</h3>
+                                <p>体重来自 Records 的每日记录；这里仅维护长期档案和 AI 安全边界。</p>
+                            </div>
+                            <button class="btn btn-text profile-edit-btn" onclick="ProfilePage.showEditForm()">编辑档案</button>
+                        </div>
+                        <div id="health-tags-container">
+                            ${this.renderHealthSummary(user)}
+                        </div>
+                    </section>
+                </main>
             </div>
         `;
+        this.bindAiPreference();
+    },
 
-        this.loadNotifications();
+    bindAiPreference() {
+        const textarea = document.getElementById('aiPreferencePrompt');
+        if (!textarea) return;
+        textarea.addEventListener('input', () => this.updateAiPreferenceCount());
+        this.updateAiPreferenceCount();
+    },
+
+    renderHealthSummary(user) {
+        return `
+            <div class="profile-health-grid">
+                <div><span>身高</span><strong>${this.formatNumber(user.height)}<small>cm</small></strong></div>
+                <div><span>最新体重</span><strong>${this.formatNumber(user.weight)}<small>kg</small></strong></div>
+                <div><span>健康目标</span><p>${this.escapeHtml(user.healthGoal || '未填写')}</p></div>
+                <div class="profile-health-history"><span>病史 / 健康限制</span><p>${this.escapeHtml(user.medicalHistory || '未填写')}</p></div>
+            </div>
+        `;
     },
 
     showEditForm() {
@@ -153,17 +133,22 @@ const ProfilePage = {
 
         container.innerHTML = `
             <div class="profile-edit-form">
+                <div class="profile-readonly-row">
+                    <span>最新体重</span>
+                    <strong>${this.formatNumber(user.weight)} kg</strong>
+                    <small>请在 Records 中更新体重</small>
+                </div>
                 <div class="form-group">
                     <label>身高 (cm)</label>
-                    <input type="number" id="editHeight" value="${user.height || ''}" step="0.1" min="50" max="250">
+                    <input type="number" id="editHeight" value="${this.escapeAttr(user.height || '')}" step="0.1" min="50" max="250">
                 </div>
                 <div class="form-group">
-                    <label>体重 (kg)</label>
-                    <input type="number" id="editWeight" value="${user.weight || ''}" step="0.1" min="20" max="300">
+                    <label>健康目标</label>
+                    <input id="editHealthGoal" value="${this.escapeAttr(user.healthGoal || '')}" maxlength="100" placeholder="例如：提升体能、减脂、稳定睡眠">
                 </div>
                 <div class="form-group">
-                    <label>病史 (可填写“无”)</label>
-                    <textarea id="editHistory" placeholder="请如实填写，AI 指导师将据此调整安全边界">${this.escapeHtml(user.medicalHistory) || ''}</textarea>
+                    <label>病史 / 健康限制 (可填写“无”)</label>
+                    <textarea id="editHistory" placeholder="请如实填写，AI 指导师将据此调整安全边界">${this.escapeHtml(user.medicalHistory || '')}</textarea>
                 </div>
                 <button class="save-btn" onclick="ProfilePage.saveProfile()">保存</button>
                 <button class="btn btn-text profile-cancel-btn" onclick="ProfilePage.render()">取消</button>
@@ -173,35 +158,29 @@ const ProfilePage = {
 
     async saveProfile() {
         const height = document.getElementById('editHeight')?.value;
-        const weight = document.getElementById('editWeight')?.value;
-        const medicalHistory = document.getElementById('editHistory')?.value;
+        const healthGoal = document.getElementById('editHealthGoal')?.value || '';
+        const medicalHistory = document.getElementById('editHistory')?.value || '';
         const btn = document.querySelector('.profile-edit-form .save-btn');
 
         const heightValue = height?.trim();
-        const weightValue = weight?.trim();
         const parsedHeight = heightValue ? Number(heightValue) : null;
-        const parsedWeight = weightValue ? Number(weightValue) : null;
         if (!heightValue) {
             Toast.show('身高不能为空');
-            return;
-        }
-        if (!weightValue) {
-            Toast.show('体重不能为空');
             return;
         }
         if (heightValue && (Number.isNaN(parsedHeight) || parsedHeight < 50 || parsedHeight > 250)) {
             Toast.show('身高范围50-250cm');
             return;
         }
-        if (weightValue && (Number.isNaN(parsedWeight) || parsedWeight < 20 || parsedWeight > 300)) {
-            Toast.show('体重范围20-300kg');
+        if (healthGoal.length > 100) {
+            Toast.show('健康目标最多100个字符');
             return;
         }
-        if (!(medicalHistory || '').trim()) {
+        if (!medicalHistory.trim()) {
             Toast.show('病史不能为空，可填写“无”');
             return;
         }
-        if ((medicalHistory || '').length > 2000) {
+        if (medicalHistory.length > 2000) {
             Toast.show('病史最多2000个字符');
             return;
         }
@@ -211,8 +190,8 @@ const ProfilePage = {
         try {
             await apiClient.put('/user/profile', {
                 height: parsedHeight,
-                weight: parsedWeight,
-                medicalHistory: medicalHistory || ''
+                healthGoal: healthGoal.trim(),
+                medicalHistory
             });
             Toast.show('保存成功');
             await this.render();
@@ -223,33 +202,57 @@ const ProfilePage = {
         }
     },
 
+    async saveAiPreference() {
+        const textarea = document.getElementById('aiPreferencePrompt');
+        const btn = document.querySelector('.profile-save-ai-btn');
+        if (!textarea) return;
+        const prompt = textarea.value.trim();
+        if (prompt.length > this.aiPreferenceLimit) {
+            Toast.show(`AI 个性化最多${this.aiPreferenceLimit}个字符`);
+            return;
+        }
+        await this.persistAiPreference(prompt, btn);
+    },
+
+    async resetAiPreference() {
+        const textarea = document.getElementById('aiPreferencePrompt');
+        const btn = document.querySelector('.profile-reset-ai-btn');
+        if (textarea) textarea.value = '';
+        this.updateAiPreferenceCount();
+        await this.persistAiPreference('', btn, '已恢复默认');
+    },
+
+    async persistAiPreference(prompt, btn, successMessage = 'AI 个性化已保存') {
+        if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
+        try {
+            await apiClient.put('/user/profile', { aiPreferencePrompt: prompt });
+            this.user = { ...(this.user || {}), aiPreferencePrompt: prompt };
+            this.updateAiPreferenceCount();
+            Toast.show(successMessage);
+        } catch (e) {
+            Toast.show('保存失败: ' + e.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
+        }
+    },
+
+    updateAiPreferenceCount() {
+        const textarea = document.getElementById('aiPreferencePrompt');
+        const count = document.getElementById('aiPreferenceCount');
+        if (!textarea || !count) return;
+        count.textContent = `${textarea.value.length}/${this.aiPreferenceLimit}`;
+    },
+
     logout() {
         apiClient.setToken(null);
         PageRouter.navigate('auth');
     },
 
-    async loadNotifications() {
-        const container = document.getElementById('notificationList');
-        if (!container) return;
-        try {
-            const result = await apiClient.get('/user/notifications');
-            const list = result.data || [];
-            if (!list || list.length === 0) {
-                container.innerHTML = '<div class="notification-empty">暂无通知</div>';
-                return;
-            }
-            container.innerHTML = list.map(n => `
-                <div class="notification-item${n.isRead ? '' : ' unread'}">
-                    <div class="notification-content">
-                        <div class="notification-title">${this.escapeHtml(n.title) || ''}</div>
-                        <div class="notification-body">${this.escapeHtml(n.content) || ''}</div>
-                        <div class="notification-time">${this.formatDate(n.createTime)}</div>
-                    </div>
-                </div>
-            `).join('');
-        } catch (e) {
-            container.innerHTML = '<div class="notification-empty">暂无通知</div>';
-        }
+    formatNumber(value) {
+        if (value === null || value === undefined || value === '') return '--';
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return this.escapeHtml(String(value));
+        return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
     },
 
     formatDate(dateValue) {

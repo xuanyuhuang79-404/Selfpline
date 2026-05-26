@@ -1,6 +1,8 @@
 -- Selfpline Database Schema
 -- All tables use IF NOT EXISTS for idempotent execution
 
+DROP TABLE IF EXISTS `sys_notification`;
+
 CREATE TABLE IF NOT EXISTS `sys_user` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `username` VARCHAR(50) NOT NULL,
@@ -9,6 +11,7 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
     `weight` DECIMAL(5,2) DEFAULT NULL COMMENT '体重(kg)',
     `health_goal` VARCHAR(100) DEFAULT NULL,
     `medical_history` TEXT,
+    `ai_preference_prompt` TEXT COMMENT '全局AI个性化提示词',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `uk_username` (`username`),
@@ -74,7 +77,6 @@ CREATE TABLE IF NOT EXISTS `plan_daily_log` (
     `is_completed` TINYINT(1) NOT NULL DEFAULT 0,
     `actual_value` DECIMAL(10,2) DEFAULT NULL,
     `target_value` DECIMAL(10,2) DEFAULT NULL,
-    `notes` VARCHAR(500) DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `idx_plan_id` (`plan_id`),
@@ -146,16 +148,4 @@ CREATE TABLE IF NOT EXISTS `community_comment` (
     PRIMARY KEY (`id`),
     INDEX `idx_post_time` (`post_id`, `create_time`),
     INDEX `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `sys_notification` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT,
-    `user_id` BIGINT NOT NULL,
-    `notify_type` TINYINT DEFAULT NULL,
-    `title` VARCHAR(100) DEFAULT NULL,
-    `content` TEXT,
-    `is_read` TINYINT(1) NOT NULL DEFAULT 0,
-    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    INDEX `idx_user_read` (`user_id`, `is_read`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

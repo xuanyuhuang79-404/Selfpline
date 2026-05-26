@@ -39,8 +39,4 @@ public class UserController {
         return Result.success();
     }
 
-    @GetMapping("/notifications")
-    public Result<?> getNotifications(@RequestAttribute("userId") Long userId) {
-        return Result.success(userService.getNotifications(userId));
-    }
 }

@@ -16,9 +16,48 @@ public class SchemaMigrationRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        dropSysNotificationTable();
+        ensureSysUserProfileFields();
+        ensurePlanDailyLogNoNotes();
         ensureAiCustomPlanShortName();
         ensureHealthDailyRecordStateFields();
         ensureCommunityTables();
+    }
+
+    private void dropSysNotificationTable() {
+        if (!tableExists("sys_notification")) {
+            return;
+        }
+        jdbcTemplate.execute("DROP TABLE IF EXISTS sys_notification");
+        log.info("Schema migration applied: dropped sys_notification");
+    }
+
+    private void ensureSysUserProfileFields() {
+        if (!tableExists("sys_user")) {
+            log.warn("Skip schema migration: table sys_user does not exist");
+            return;
+        }
+        addColumnIfMissing("sys_user", "health_goal", """
+                ALTER TABLE sys_user
+                ADD COLUMN health_goal VARCHAR(100) NULL COMMENT '健身目标'
+                AFTER weight
+                """);
+        addColumnIfMissing("sys_user", "ai_preference_prompt", """
+                ALTER TABLE sys_user
+                ADD COLUMN ai_preference_prompt TEXT NULL COMMENT '全局AI个性化提示词'
+                AFTER medical_history
+                """);
+    }
+
+    private void ensurePlanDailyLogNoNotes() {
+        if (!tableExists("plan_daily_log")) {
+            log.warn("Skip schema migration: table plan_daily_log does not exist");
+            return;
+        }
+        dropColumnIfExists("plan_daily_log", "notes", """
+                ALTER TABLE plan_daily_log
+                DROP COLUMN notes
+                """);
     }
 
     private void ensureAiCustomPlanShortName() {
@@ -141,5 +180,13 @@ public class SchemaMigrationRunner implements ApplicationRunner {
         }
         jdbcTemplate.execute(sql);
         log.info("Schema migration applied: {}.{}", tableName, columnName);
+    }
+
+    private void dropColumnIfExists(String tableName, String columnName, String sql) {
+        if (!columnExists(tableName, columnName)) {
+            return;
+        }
+        jdbcTemplate.execute(sql);
+        log.info("Schema migration applied: dropped {}.{}", tableName, columnName);
     }
 }

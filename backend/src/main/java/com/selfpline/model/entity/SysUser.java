@@ -19,6 +19,7 @@ public class SysUser {
     private BigDecimal weight;
     private String healthGoal;
     private String medicalHistory;
+    private String aiPreferencePrompt;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

@@ -19,5 +19,4 @@ public class DailyLogRequest {
 
     private BigDecimal actualValue;
     private BigDecimal targetValue;
-    private String notes;
 }

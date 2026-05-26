@@ -1,17 +1,16 @@
-// 计划详情页 — 每日记录 + AI 辅助聊天
+// 计划详情页：摘要、今日打卡、最近执行概览与完整计划
 const PlanDetailPage = {
     planId: null,
     planData: null,
-    assistSceneKey: 'daily_checkin',
-    assistScenarios: [],
-    isAssistSending: false,
+    trackingMode: 1,
+    planContentExpanded: false,
 
     async render(params = {}) {
         if (!params.planId) {
-            const routeParams = PageRouter.getParams();
-            params = routeParams;
+            params = PageRouter.getParams();
         }
         this.planId = params.planId;
+        this.planContentExpanded = false;
         document.getElementById('top-nav').classList.remove('hidden');
         document.getElementById('bottom-nav').classList.remove('hidden');
         document.getElementById('fab-add-habit').classList.add('hidden');
@@ -33,34 +32,16 @@ const PlanDetailPage = {
         document.getElementById('page-container').innerHTML = `
             <div class="plan-detail-shell">
                 <div id="plan-detail-content" class="plan-detail-content loading">加载中...</div>
-                <aside class="ai-assist-chat expanded" id="ai-assist-chat">
-                    <button class="assist-chat-toggle" onclick="PlanDetailPage.toggleAssistChat()">💬 AI 助手</button>
-                    <div class="assist-scene-row" id="assist-scene-row">
-                    <select id="assist-scene-select" onchange="PlanDetailPage.selectAssistScene(this.value)"></select>
-                    </div>
-                    <div class="assist-chat-messages" id="assist-chat-messages">
-                        <div class="chat-bubble ai">需要调整计划、复盘阻力或整理明天行动时，可以直接问我。</div>
-                    </div>
-                    <div class="assist-chat-input-row" id="assist-chat-input-row">
-                        <input id="assist-chat-input" placeholder="跟 AI 聊聊今天...">
-                        <button id="assist-chat-send" onclick="PlanDetailPage.sendAssistMessage()">发送</button>
-                    </div>
-                </aside>
             </div>
         `;
 
-        await this.loadAssistScenarios();
         await this.loadDetail();
-
-        document.getElementById('assist-chat-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') this.sendAssistMessage();
-        });
     },
 
     async loadDetail() {
         try {
             const result = await apiClient.get(`/plan/${this.planId}/detail`);
-            this.planData = result.data;
+            this.planData = result.data || {};
             this.trackingMode = 1;
             this.renderContent();
             await this.loadTodayLog();
@@ -80,210 +61,209 @@ const PlanDetailPage = {
         }
     },
 
-    async loadAssistScenarios() {
-        try {
-            const result = await apiClient.get('/ai/scenarios');
-            const scenes = Array.isArray(result.data) ? result.data : [];
-            this.assistScenarios = scenes.filter(scene =>
-                (scene.category === 'coach_chat' || scene.planCreationSupported === false)
-                && scene.assistSupported !== false
-            );
-        } catch (e) {
-            this.assistScenarios = this.getFallbackAssistScenarios();
-        }
-        if (!this.assistScenarios.length) {
-            this.assistScenarios = this.getFallbackAssistScenarios();
-        }
-        this.renderAssistScenarios();
-    },
-
-    getFallbackAssistScenarios() {
-        return [
-            { sceneKey: 'daily_checkin', sceneName: '每日打卡' },
-            { sceneKey: 'weekly_review', sceneName: '周复盘' },
-            { sceneKey: 'coach_gentle_companion', sceneName: '温柔陪伴型' },
-            { sceneKey: 'coach_strict_accountability', sceneName: '严格督促型' },
-            { sceneKey: 'coach_emotional_support', sceneName: '情绪支持型' }
-        ];
-    },
-
-    renderAssistScenarios() {
-        const select = document.getElementById('assist-scene-select');
-        if (!select) return;
-        if (!this.assistScenarios.some(scene => scene.sceneKey === this.assistSceneKey)) {
-            this.assistSceneKey = this.assistScenarios[0]?.sceneKey || 'daily_checkin';
-        }
-        select.innerHTML = this.assistScenarios.map(scene => `
-            <option value="${scene.sceneKey}" ${scene.sceneKey === this.assistSceneKey ? 'selected' : ''}>
-                ${scene.icon || '✨'} ${scene.sceneName}
-            </option>
-        `).join('');
-    },
-
-    selectAssistScene(sceneKey) {
-        this.assistSceneKey = sceneKey || 'daily_checkin';
-    },
-
     renderContent() {
-        const p = this.planData;
-        const dirLabel = p.planDirection === 1 ? 'Build · 养成' : 'Quit · 戒除';
-        const dirColor = p.planDirection === 1 ? 'var(--color-build)' : 'var(--color-quit)';
-        const dirBg = p.planDirection === 1 ? 'var(--color-build-soft)' : 'var(--color-quit-soft)';
-        const completionRate = Number.isFinite(Number(p.completionRate)) ? Math.min(100, Math.max(0, Number(p.completionRate))) : 0;
+        const p = this.planData || {};
         const shortName = p.shortName || p.targetName || '未命名计划';
+        const directionClass = p.planDirection === 2 ? 'quit' : 'build';
+        const directionLabel = p.planDirection === 2 ? 'Quit · 戒除' : 'Build · 养成';
 
         document.getElementById('plan-detail-content').innerHTML = `
             <div class="detail-back-row">
-                <button onclick="history.back()">← 返回</button>
+                <button type="button" onclick="history.back()">← 返回</button>
             </div>
 
-            <div class="plan-detail-grid">
-                <section class="plan-detail-header">
+            <section class="plan-summary-card ${directionClass}">
+                <div class="plan-summary-main">
                     <div class="plan-icon">${this.escapeHtml(p.icon || '📋')}</div>
-                    <div class="plan-name">${this.escapeHtml(shortName)}</div>
-                    ${p.targetName && p.targetName !== shortName ? `<div class="plan-full-name">${this.escapeHtml(p.targetName)}</div>` : ''}
-                    <span class="streak-badge" style="background:${dirBg};color:${dirColor}">${dirLabel}</span>
-                    <div class="plan-meta">🔥 连续 <strong>${p.streakDays || 0}</strong> 天 · 完成率 <strong>${completionRate.toFixed(0)}%</strong></div>
-                </section>
-
-                <section class="daily-record-section">
-                    <h3>📅 今日活动记录</h3>
-                    <div class="tracker-component" id="trackerContainer"></div>
-                    <textarea class="notes-input" id="plan-notes" placeholder="记录今日心得..."></textarea>
-                </section>
-
-                <section class="daily-record-section plan-content-section">
-                    <h3>📋 AI 计划内容</h3>
-                    <div class="plan-content-text">${this.escapeHtml(p.planContent || '暂无详细计划内容').replace(/\n/g, '<br>')}</div>
-                </section>
-                <div class="daily-record-section detail-tip-section">
-                    <h3>下一步</h3>
-                    <p>完成今天的记录后，可以在右侧 AI 助手里复盘阻力、调整目标或生成明天的行动建议。</p>
+                    <div class="plan-summary-copy">
+                        <span class="direction-pill">${directionLabel}</span>
+                        <h1>${this.escapeHtml(shortName)}</h1>
+                        ${p.targetName && p.targetName !== shortName ? `<p>${this.escapeHtml(p.targetName)}</p>` : ''}
+                    </div>
                 </div>
+                <div class="plan-summary-stats" id="plan-summary-stats">
+                    ${this.renderSummaryStats()}
+                </div>
+            </section>
+
+            <div class="plan-detail-grid">
+                <section class="daily-record-section today-check-section">
+                    <div class="section-head-tight">
+                        <div>
+                            <h3>今日打卡</h3>
+                            <p>只记录今天是否完成，需要调整时可随时取消。</p>
+                        </div>
+                    </div>
+                    <div class="tracker-component" id="trackerContainer"></div>
+                </section>
+
+                <section class="daily-record-section recent-overview-section">
+                    <div class="section-head-tight">
+                        <div>
+                            <h3>最近执行概览</h3>
+                            <p>过去 7 天完成状态一眼看清。</p>
+                        </div>
+                    </div>
+                    <div id="recent-overview-body">
+                        ${this.renderRecentOverviewBody()}
+                    </div>
+                </section>
+
+                <section class="daily-record-section plan-content-section" id="plan-content-section">
+                    ${this.renderPlanContentSection()}
+                </section>
             </div>
         `;
 
-        DailyTracker.init(this.planId, this.trackingMode);
+        DailyTracker.init(this.planId, this.trackingMode, { isCompleted: Boolean(p.todayCompleted) });
+    },
+
+    renderSummaryStats() {
+        const p = this.planData || {};
+        const completionRate = Number.isFinite(Number(p.completionRate))
+            ? Math.min(100, Math.max(0, Number(p.completionRate)))
+            : 0;
+        return `
+            <div>
+                <span>连续</span>
+                <strong>${p.streakDays || 0}<small>天</small></strong>
+            </div>
+            <div>
+                <span>完成率</span>
+                <strong>${completionRate.toFixed(0)}<small>%</small></strong>
+            </div>
+            <div>
+                <span>今日</span>
+                <strong>${p.todayCompleted ? '已完成' : '待完成'}</strong>
+            </div>
+        `;
+    },
+
+    renderRecentOverviewBody() {
+        const days = this.getRecentSevenDays();
+        const logMap = new Map((this.planData?.recentLogs || []).map(log => [log.recordDate, log]));
+        const completedCount = days.filter(date => Boolean(logMap.get(date)?.isCompleted)).length;
+        return `
+            <div class="recent-dot-row" aria-label="最近 7 天执行状态">
+                ${days.map(date => this.renderRecentDay(date, logMap.get(date))).join('')}
+            </div>
+            <div class="recent-overview-meta">
+                <strong>${completedCount}/7</strong>
+                <span>天完成</span>
+            </div>
+        `;
+    },
+
+    renderRecentDay(date, log) {
+        const completed = Boolean(log?.isCompleted);
+        const hasLog = Boolean(log);
+        const className = completed ? 'done' : (hasLog ? 'missed' : 'empty');
+        const label = this.shortDateLabel(date);
+        const title = completed ? '已完成' : (hasLog ? '未完成' : '未记录');
+        return `
+            <div class="recent-day ${className}" title="${date} ${title}">
+                <span></span>
+                <small>${label}</small>
+            </div>
+        `;
+    },
+
+    renderPlanContentSection() {
+        const content = this.planData?.planContent || '暂无详细计划内容';
+        const expandedClass = this.planContentExpanded ? 'expanded' : 'collapsed';
+        return `
+            <div class="section-head-tight">
+                <div>
+                    <h3>完整计划</h3>
+                    <p>默认收起，展开后查看全部执行细节。</p>
+                </div>
+            </div>
+            <div class="plan-content-frame ${expandedClass}">
+                <div class="plan-content-text">${this.escapeHtml(content).replace(/\n/g, '<br>')}</div>
+            </div>
+            <button class="plan-content-toggle" type="button" onclick="PlanDetailPage.togglePlanContent()">
+                ${this.planContentExpanded ? '收起' : '展开完整计划'}
+            </button>
+        `;
     },
 
     async loadTodayLog() {
         const trackerContainer = document.getElementById('trackerContainer') || document.getElementById('tracker-container');
         if (!trackerContainer) return;
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.getLocalDateString(new Date());
         try {
             const result = await apiClient.get(`/plan/${this.planId}/daily-logs?startDate=${today}&endDate=${today}`);
             const logs = result.data || [];
             const existingLog = logs.length > 0 ? logs[0] : null;
-
-            // Re-initialize tracker with existing log data
+            if (existingLog) {
+                this.upsertRecentLog(today, existingLog.isCompleted);
+                this.planData.todayCompleted = Boolean(existingLog.isCompleted);
+            }
             DailyTracker.init(this.planId, 1, existingLog);
-
-            // If there's a notes field, populate it
-            const notesEl = document.getElementById('plan-notes');
-            if (notesEl && existingLog && existingLog.notes) {
-                notesEl.value = existingLog.notes || '';
-            } else if (notesEl) {
-                notesEl.value = '';
-            }
         } catch (e) {
-            // If no logs found, init with empty
-            DailyTracker.init(this.planId, 1, null);
+            DailyTracker.init(this.planId, 1, { isCompleted: Boolean(this.planData?.todayCompleted) });
         }
     },
 
-    toggleAssistChat() {
-        const chat = document.getElementById('ai-assist-chat');
-        const msgs = document.getElementById('assist-chat-messages');
-        const sceneRow = document.getElementById('assist-scene-row');
-        const inputRow = document.getElementById('assist-chat-input-row');
+    handleTodayCheckChanged(planId, isCompleted) {
+        if (String(planId) !== String(this.planId) || !this.planData) return;
+        const today = this.getLocalDateString(new Date());
+        this.planData.todayCompleted = Boolean(isCompleted);
+        this.upsertRecentLog(today, isCompleted);
 
-        if (chat.classList.contains('collapsed')) {
-            chat.classList.remove('collapsed');
-            chat.classList.add('expanded');
-            sceneRow.classList.remove('hidden');
-            msgs.classList.remove('hidden');
-            inputRow.classList.remove('hidden');
+        const stats = document.getElementById('plan-summary-stats');
+        if (stats) stats.innerHTML = this.renderSummaryStats();
+
+        const overview = document.getElementById('recent-overview-body');
+        if (overview) overview.innerHTML = this.renderRecentOverviewBody();
+    },
+
+    togglePlanContent() {
+        this.planContentExpanded = !this.planContentExpanded;
+        const section = document.getElementById('plan-content-section');
+        if (section) section.innerHTML = this.renderPlanContentSection();
+    },
+
+    upsertRecentLog(recordDate, isCompleted) {
+        if (!this.planData) return;
+        if (!Array.isArray(this.planData.recentLogs)) {
+            this.planData.recentLogs = [];
+        }
+        const existing = this.planData.recentLogs.find(log => log.recordDate === recordDate);
+        if (existing) {
+            existing.isCompleted = Boolean(isCompleted);
+            existing.actualValue = isCompleted ? 1 : 0;
+            existing.targetValue = 1;
         } else {
-            chat.classList.remove('expanded');
-            chat.classList.add('collapsed');
-            sceneRow.classList.add('hidden');
-            msgs.classList.add('hidden');
-            inputRow.classList.add('hidden');
+            this.planData.recentLogs.push({
+                recordDate,
+                isCompleted: Boolean(isCompleted),
+                actualValue: isCompleted ? 1 : 0,
+                targetValue: 1
+            });
         }
     },
 
-    async sendAssistMessage() {
-        if (this.isAssistSending) return;
-        const input = document.getElementById('assist-chat-input');
-        const message = input.value.trim();
-        if (!message) return;
-
-        const container = document.getElementById('assist-chat-messages');
-        const sendBtn = document.getElementById('assist-chat-send');
-        const loadingId = 'assist-loading-' + Date.now();
-        const streamBubbleId = 'assist-stream-' + Date.now();
-        container.insertAdjacentHTML('beforeend', `<div class="chat-bubble user">${this.escapeHtml(message)}</div>`);
-        container.insertAdjacentHTML('beforeend', `<div class="chat-bubble ai loading" id="${loadingId}">AI 正在思考...</div>`);
-        container.scrollTop = container.scrollHeight;
-        input.value = '';
-        input.disabled = true;
-        sendBtn.disabled = true;
-        this.isAssistSending = true;
-
-        const self = this;
-        let fullResponse = '';
-        let firstToken = true;
-
-        await apiClient.streamPost('/ai/assist-chat/stream', {
-            planId: this.planId,
-            message: message,
-            sceneKey: this.assistSceneKey
-        }, {
-            onToken(data) {
-                if (firstToken) {
-                    const loading = document.getElementById(loadingId);
-                    if (loading) loading.remove();
-                    firstToken = false;
-                }
-                fullResponse += data.content || '';
-                let bubble = document.getElementById(streamBubbleId);
-                if (!bubble) {
-                    bubble = document.createElement('div');
-                    bubble.className = 'chat-bubble ai';
-                    bubble.id = streamBubbleId;
-                    container.appendChild(bubble);
-                }
-                bubble.innerHTML = self.escapeHtml(fullResponse).replace(/\n/g, '<br>');
-                console.debug('[stream] current assistant message length', fullResponse.length);
-                container.scrollTop = container.scrollHeight;
-            },
-            onDone() {
-                const loading = document.getElementById(loadingId);
-                if (loading) loading.remove();
-                const bubble = document.getElementById(streamBubbleId);
-                if (bubble) bubble.removeAttribute('id');
-                input.disabled = false;
-                sendBtn.disabled = false;
-                self.isAssistSending = false;
-            },
-            onError(data) {
-                const loading = document.getElementById(loadingId);
-                if (loading) loading.remove();
-                const bubble = document.getElementById(streamBubbleId);
-                if (bubble) bubble.remove();
-                if (fullResponse) {
-                    const partial = document.createElement('div');
-                    partial.className = 'chat-bubble ai';
-                    partial.innerHTML = self.escapeHtml(fullResponse).replace(/\n/g, '<br>');
-                    container.appendChild(partial);
-                }
-                Toast.show('发送失败: ' + (data.message || '未知错误'));
-                input.disabled = false;
-                sendBtn.disabled = false;
-                self.isAssistSending = false;
-            }
+    getRecentSevenDays() {
+        const today = new Date();
+        return Array.from({ length: 7 }, (_, index) => {
+            const date = new Date(today);
+            date.setDate(today.getDate() - (6 - index));
+            return this.getLocalDateString(date);
         });
+    },
+
+    getLocalDateString(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    },
+
+    shortDateLabel(date) {
+        const text = String(date || '');
+        return text.length >= 10 ? text.slice(5).replace('-', '/') : text;
     },
 
     escapeHtml(text) {

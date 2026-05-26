@@ -49,8 +49,7 @@ const HabitCard = {
                 planId: planId,
                 isCompleted: nextCompleted,
                 actualValue: nextCompleted ? 1 : 0,
-                targetValue: 1,
-                notes: '快速打卡'
+                targetValue: 1
             });
             Toast.show(nextCompleted ? '今日计划已完成' : '今日计划已取消完成');
             // Refresh cards to show updated state

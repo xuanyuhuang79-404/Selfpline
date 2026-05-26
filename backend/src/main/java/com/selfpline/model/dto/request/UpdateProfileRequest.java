@@ -14,10 +14,12 @@ public class UpdateProfileRequest {
     @DecimalMax(value = "250.0", message = "身高范围50-250cm")
     private BigDecimal height;
 
-    @DecimalMin(value = "20.0", message = "体重范围20-300kg")
-    @DecimalMax(value = "300.0", message = "体重范围20-300kg")
-    private BigDecimal weight;
+    @Size(max = 100, message = "健康目标最多100个字符")
+    private String healthGoal;
 
     @Size(max = 2000, message = "病史最多2000个字符")
     private String medicalHistory;
+
+    @Size(max = 2000, message = "AI个性化提示词最多2000个字符")
+    private String aiPreferencePrompt;
 }

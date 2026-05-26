@@ -330,15 +330,6 @@
     font-weight: 950;
 }
 
-.record-detail-head span {
-    padding: 5px 10px;
-    border-radius: 999px;
-    background: #fff;
-    color: var(--color-primary);
-    font-size: 12px;
-    font-weight: 900;
-}
-
 .record-detail-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

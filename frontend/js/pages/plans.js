@@ -41,7 +41,11 @@ const PlansPage = {
                         </div>
                         <label class="plans-search-label">
                             <span>关键词</span>
-                            <input id="plans-filter-keyword" type="search" maxlength="60" placeholder="搜索目标或短名">
+                            <div class="plans-search-control">
+                                <span class="plans-search-icon">⌕</span>
+                                <input id="plans-filter-keyword" type="search" maxlength="60" placeholder="搜索目标或短名">
+                                <button id="plans-filter-clear" class="plans-search-clear hidden" type="button" aria-label="清空关键词">×</button>
+                            </div>
                         </label>
                         <button class="btn btn-primary plans-filter-btn" id="plans-filter-submit" type="button">筛选</button>
                     </div>
@@ -67,6 +71,7 @@ const PlansPage = {
     bindFilters() {
         const keyword = document.getElementById('plans-filter-keyword');
         if (keyword) keyword.value = this.filters.keyword;
+        this.updateClearButton();
         this.syncSegment('plans-filter-direction', this.filters.direction);
         this.syncSegment('plans-filter-status', this.filters.status);
 
@@ -87,14 +92,28 @@ const PlansPage = {
                 status: this.filters.status || '',
                 keyword: keyword?.value?.trim() || ''
             };
+            this.updateClearButton();
             this.loadPlans();
         });
+        document.getElementById('plans-filter-clear')?.addEventListener('click', () => {
+            if (keyword) keyword.value = '';
+            this.filters.keyword = '';
+            this.updateClearButton();
+            this.loadPlans();
+        });
+        keyword?.addEventListener('input', () => this.updateClearButton());
         keyword?.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
                 document.getElementById('plans-filter-submit')?.click();
             }
         });
+    },
+
+    updateClearButton() {
+        const keyword = document.getElementById('plans-filter-keyword');
+        const clear = document.getElementById('plans-filter-clear');
+        clear?.classList.toggle('hidden', !(keyword?.value || '').trim());
     },
 
     syncSegment(id, value) {
